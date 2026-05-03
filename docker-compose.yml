@@ -90,6 +90,7 @@ services:
     restart: unless-stopped
     networks:
       - internal
+      - public
 
 networks:
   public:
