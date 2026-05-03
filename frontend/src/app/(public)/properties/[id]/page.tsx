@@ -7,7 +7,7 @@ import { BookingForm } from './booking-form'
 
 async function getProperty(id: string): Promise<Property | null> {
   try {
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/properties/${id}`, {
       next: { revalidate: 60 },
     })
@@ -20,7 +20,7 @@ async function getProperty(id: string): Promise<Property | null> {
 
 async function getCalendar(id: string): Promise<CalendarEntry[]> {
   try {
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/properties/${id}/calendar`, {
       next: { revalidate: 60 },
     })

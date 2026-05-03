@@ -18,7 +18,7 @@ export function formatDate(dateStr: string): string {
 }
 
 export function getImageUrl(minioKey: string, bucket: string = 'property-images'): string {
-  const base = process.env.NEXT_PUBLIC_MINIO_URL || 'http://localhost:9000'
+  const base = process.env.NEXT_PUBLIC_MINIO_URL || 'http://localhost:9100'
   return `${base}/${bucket}/${minioKey}`
 }
 

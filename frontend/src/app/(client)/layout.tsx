@@ -10,7 +10,7 @@ async function getMe() {
     const cookieStore = await cookies()
     const token = cookieStore.get('access_token')?.value
     if (!token) return null
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/auth/me`, {
       headers: { Cookie: `access_token=${token}` },
       cache: 'no-store',

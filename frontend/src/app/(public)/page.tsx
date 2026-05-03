@@ -7,7 +7,7 @@ import { BannerCarousel } from '@/components/banner-carousel'
 
 async function getFeaturedProperties(): Promise<Property[]> {
   try {
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/cms/featured`, {
       cache: 'no-store',
     })
@@ -24,7 +24,7 @@ async function getFeaturedProperties(): Promise<Property[]> {
 
 async function getVisibleBanners(): Promise<CmsBanner[]> {
   try {
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/cms/banners`, {
       cache: 'no-store',
     })

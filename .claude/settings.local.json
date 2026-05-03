@@ -13,7 +13,8 @@
       "Bash(docker restart project-backend-1 *)",
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell(netstat *)",
-      "Bash(docker exec *)"
+      "Bash(docker exec *)",
+      "Bash(read f *)"
     ]
   }
 }

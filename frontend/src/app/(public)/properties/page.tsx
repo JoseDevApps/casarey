@@ -3,7 +3,7 @@ import { PropertyCard } from '@/components/property-card'
 
 async function getProperties(): Promise<Property[]> {
   try {
-    const base = process.env.BACKEND_URL || 'http://localhost:8000'
+    const base = process.env.BACKEND_URL || 'http://localhost:8100'
     const res = await fetch(`${base}/properties?page_size=50`, {
       next: { revalidate: 60 },
     })
