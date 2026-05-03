@@ -3,21 +3,15 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   output: 'standalone',
   images: {
-    // MinIO serves images directly to the browser; Next.js's optimizer can't
-    // reach localhost:9000 from inside the container, so skip optimization.
     unoptimized: true,
-    remotePatterns: [
+  },
+  async rewrites() {
+    return [
       {
-        protocol: 'http',
-        hostname: 'minio',
-        port: '9000',
+        source: '/minio/:path*',
+        destination: 'http://minio:9000/:path*',
       },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '9100',
-      },
-    ],
+    ]
   },
 }
 

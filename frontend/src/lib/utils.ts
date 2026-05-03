@@ -18,8 +18,9 @@ export function formatDate(dateStr: string): string {
 }
 
 export function getImageUrl(minioKey: string, bucket: string = 'property-images'): string {
-  const base = process.env.NEXT_PUBLIC_MINIO_URL || 'http://localhost:9100'
-  return `${base}/${bucket}/${minioKey}`
+  // Relative path: rewritten by Next.js to internal http://minio:9000 (see next.config.ts)
+  // Same-origin, so HTTPS works automatically when the site is served over HTTPS
+  return `/minio/${bucket}/${minioKey}`
 }
 
 export function getDaysBetween(start: string, end: string): number {
