@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Remove-Item -Recurse -Force \"E:\\\\Trabajos\\\\Reych\\\\Project\\\\frontend\\\\src\\\\app\\\\\\(admin\\)\\\\dashboard\\\\reservations\")",
+      "Bash(docker compose *)",
+      "Bash(docker exec project-db-1 *)",
+      "Bash(docker cp *)",
+      "Bash(docker exec project-backend-1 *)",
+      "Bash(curl *)",
+      "Bash(python -m json.tool)",
+      "Bash(docker exec project-frontend-1 *)",
+      "Bash(docker restart project-frontend-1 *)",
+      "Bash(docker restart project-backend-1 *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(netstat *)",
+      "Bash(docker exec *)"
+    ]
+  }
+}
