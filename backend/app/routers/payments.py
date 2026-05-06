@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from uuid import UUID
+from typing import Optional
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
@@ -37,14 +38,43 @@ def _build_method_response(method: PaymentMethod) -> PaymentMethodResponse:
 
 @router.get("", response_model=PaymentMethodListResponse)
 async def list_payment_methods(
-    owner_id: UUID = Query(..., description="The admin's user ID"),
+    owner_id: Optional[UUID] = Query(
+        None, description="If omitted, returns the authenticated admin's own methods."
+    ),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(PaymentMethod).where(
-            PaymentMethod.owner_id == owner_id, PaymentMethod.is_active == True
+    """List payment methods.
+
+    - When `owner_id` is omitted: caller must be ADMIN/SUPER_ADMIN; returns
+      all of their methods (active + inactive) so they can manage them.
+    - When `owner_id` is supplied: returns only active methods of that
+      owner. Used by clients during the reservation payment flow.
+    - Owners (or super admins) querying their own `owner_id` get the full
+      list including inactive ones.
+    """
+    is_admin = current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+
+    if owner_id is None:
+        if not is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"detail": "Solo administradores pueden listar sus propios métodos", "code": "FORBIDDEN"},
+            )
+        target_owner_id = current_user.id
+        include_inactive = True
+    else:
+        target_owner_id = owner_id
+        include_inactive = (
+            current_user.role == UserRole.SUPER_ADMIN
+            or (is_admin and str(current_user.id) == str(owner_id))
         )
-    )
+
+    query = select(PaymentMethod).where(PaymentMethod.owner_id == target_owner_id)
+    if not include_inactive:
+        query = query.where(PaymentMethod.is_active == True)
+
+    result = await db.execute(query)
     methods = result.scalars().all()
     return PaymentMethodListResponse(
         items=[_build_method_response(m) for m in methods], total=len(methods)

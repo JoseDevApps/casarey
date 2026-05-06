@@ -31,64 +31,64 @@ async def create_reservation(
     num_adults: int,
     num_children: int,
 ) -> Reservation:
-    async with db.begin():
-        # Advisory lock — serialize all reservation attempts for this property
-        lock_id = abs(hash(str(property_id))) % (2**31)
-        await db.execute(
-            text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": lock_id}
+    """Caller is responsible for committing the transaction."""
+    # Advisory lock — serialize all reservation attempts for this property within this tx
+    lock_id = abs(hash(str(property_id))) % (2**31)
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": lock_id}
+    )
+
+    # Fetch property and snapshot prices
+    result = await db.execute(
+        select(Property).where(
+            Property.id == property_id, Property.is_active == True
+        )
+    )
+    prop = result.scalar_one_or_none()
+    if not prop:
+        raise HTTPException(
+            status_code=404,
+            detail={"detail": "Propiedad no encontrada", "code": "PROPERTY_NOT_FOUND"},
         )
 
-        # Fetch property and snapshot prices
-        result = await db.execute(
-            select(Property).where(
-                Property.id == property_id, Property.is_active == True
-            )
+    # Check availability (includes soft-blocked by active reservations)
+    available = await check_availability(db, property_id, check_in, check_out)
+    if not available:
+        raise HTTPException(
+            status_code=409,
+            detail={"detail": "Fechas no disponibles", "code": "DATES_UNAVAILABLE"},
         )
-        prop = result.scalar_one_or_none()
-        if not prop:
-            raise HTTPException(
-                status_code=404,
-                detail={"detail": "Propiedad no encontrada", "code": "PROPERTY_NOT_FOUND"},
-            )
 
-        # Check availability (includes soft-blocked by active reservations)
-        available = await check_availability(db, property_id, check_in, check_out)
-        if not available:
-            raise HTTPException(
-                status_code=409,
-                detail={"detail": "Fechas no disponibles", "code": "DATES_UNAVAILABLE"},
-            )
-
-        # Validate date order
-        check_in_date = date.fromisoformat(check_in)
-        check_out_date = date.fromisoformat(check_out)
-        if check_out_date <= check_in_date:
-            raise HTTPException(
-                status_code=422,
-                detail={"detail": "La fecha de salida debe ser posterior a la de entrada", "code": "INVALID_DATES"},
-            )
-
-        # Calculate total with frozen prices
-        nights = (check_out_date - check_in_date).days
-        total = (
-            Decimal(str(prop.rate_adult)) * num_adults
-            + Decimal(str(prop.rate_child)) * num_children
-        ) * nights
-
-        reservation = Reservation(
-            property_id=property_id,
-            client_id=client_id,
-            check_in_date=check_in,
-            check_out_date=check_out,
-            num_adults=num_adults,
-            num_children=num_children,
-            snapshot_rate_adult=prop.rate_adult,
-            snapshot_rate_child=prop.rate_child,
-            total_amount=total,
+    # Validate date order
+    check_in_date = date.fromisoformat(check_in)
+    check_out_date = date.fromisoformat(check_out)
+    if check_out_date <= check_in_date:
+        raise HTTPException(
+            status_code=422,
+            detail={"detail": "La fecha de salida debe ser posterior a la de entrada", "code": "INVALID_DATES"},
         )
-        db.add(reservation)
-        await db.flush()
-        return reservation
+
+    # Calculate total with frozen prices
+    nights = (check_out_date - check_in_date).days
+    total = (
+        Decimal(str(prop.rate_adult)) * num_adults
+        + Decimal(str(prop.rate_child)) * num_children
+    ) * nights
+
+    reservation = Reservation(
+        property_id=property_id,
+        client_id=client_id,
+        check_in_date=check_in,
+        check_out_date=check_out,
+        num_adults=num_adults,
+        num_children=num_children,
+        snapshot_rate_adult=prop.rate_adult,
+        snapshot_rate_child=prop.rate_child,
+        total_amount=total,
+    )
+    db.add(reservation)
+    await db.flush()
+    return reservation
 
 
 async def transition_reservation(
@@ -114,23 +114,22 @@ async def confirm_reservation_with_payment(
     db: AsyncSession,
     reservation: Reservation,
 ) -> Reservation:
-    """Atomic: sets status to CONFIRMED and writes BOOKED calendar entries.
-    Rolls back entirely if anything fails."""
-    async with db.begin():
-        if reservation.status != ReservationStatus.APPROVED_WAITING_PAYMENT:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "detail": "La reserva debe estar en estado APPROVED_WAITING_PAYMENT",
-                    "code": "INVALID_STATUS",
-                },
-            )
-        reservation.status = ReservationStatus.CONFIRMED
-        await block_dates_for_reservation(
-            db,
-            str(reservation.property_id),
-            reservation.check_in_date,
-            reservation.check_out_date,
+    """Sets status to CONFIRMED and writes BOOKED calendar entries.
+    Caller is responsible for committing the transaction."""
+    if reservation.status != ReservationStatus.APPROVED_WAITING_PAYMENT:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "detail": "La reserva debe estar en estado APPROVED_WAITING_PAYMENT",
+                "code": "INVALID_STATUS",
+            },
         )
-        await db.flush()
-        return reservation
+    reservation.status = ReservationStatus.CONFIRMED
+    await block_dates_for_reservation(
+        db,
+        str(reservation.property_id),
+        reservation.check_in_date,
+        reservation.check_out_date,
+    )
+    await db.flush()
+    return reservation

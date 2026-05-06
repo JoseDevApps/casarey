@@ -3,12 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete
 from uuid import UUID
 from calendar import monthrange
+from datetime import date as date_cls, timedelta
+from typing import List, Optional
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
 from app.models.property import Property, PropertyCalendar, CalendarStatus
 from app.schemas.property import (
-    CalendarMonthResponse,
     CalendarEntryResponse,
     BlockDatesRequest,
 )
@@ -16,12 +17,15 @@ from app.dependencies import require_role
 
 router = APIRouter()
 
+# Default lookahead window when no year/month is supplied
+DEFAULT_LOOKAHEAD_MONTHS = 12
 
-@router.get("/{property_id}/calendar", response_model=CalendarMonthResponse)
+
+@router.get("/{property_id}/calendar", response_model=List[CalendarEntryResponse])
 async def get_calendar(
     property_id: UUID,
-    year: int = Query(..., ge=2000, le=2100),
-    month: int = Query(..., ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
 ):
     # Verify property exists
@@ -33,35 +37,42 @@ async def get_calendar(
             detail={"detail": "Propiedad no encontrada", "code": "PROPERTY_NOT_FOUND"},
         )
 
-    # Build date strings for the whole month
-    _, days_in_month = monthrange(year, month)
-    date_strings = [
-        f"{year}-{month:02d}-{day:02d}" for day in range(1, days_in_month + 1)
-    ]
+    if (year is None) != (month is None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "detail": "year y month deben enviarse juntos o ambos omitirse",
+                "code": "VALIDATION_ERROR",
+            },
+        )
+
+    if year is not None and month is not None:
+        _, days_in_month = monthrange(year, month)
+        start = f"{year}-{month:02d}-01"
+        end = f"{year}-{month:02d}-{days_in_month:02d}"
+    else:
+        today = date_cls.today()
+        last_day = today + timedelta(days=DEFAULT_LOOKAHEAD_MONTHS * 31)
+        start = today.isoformat()
+        end = last_day.isoformat()
 
     cal_result = await db.execute(
         select(PropertyCalendar).where(
             and_(
                 PropertyCalendar.property_id == property_id,
-                PropertyCalendar.date.in_(date_strings),
+                PropertyCalendar.date >= start,
+                PropertyCalendar.date <= end,
             )
         )
     )
     entries = cal_result.scalars().all()
 
-    response_entries = [
+    return [
         CalendarEntryResponse(
             date=e.date, status=e.status.value, blocked_reason=e.blocked_reason
         )
         for e in entries
     ]
-
-    return CalendarMonthResponse(
-        property_id=property_id,
-        year=year,
-        month=month,
-        entries=response_entries,
-    )
 
 
 @router.post("/{property_id}/calendar/block", status_code=status.HTTP_201_CREATED)

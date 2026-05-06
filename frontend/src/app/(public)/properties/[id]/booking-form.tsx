@@ -69,10 +69,9 @@ export function BookingForm({
           (numChildren || 0) * Number(property.rate_child))
       : 0
 
-  function handleDateRangeSelect(start: string, end: string) {
+  function handleDateRangeSelect(start: string, end: string | null) {
     setValue('check_in_date', start, { shouldValidate: true })
-    setValue('check_out_date', end, { shouldValidate: true })
-    setShowCalendar(false)
+    setValue('check_out_date', end ?? '', { shouldValidate: end !== null })
   }
 
   async function onSubmit(data: FormValues) {

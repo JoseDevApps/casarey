@@ -2,17 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Iterable
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
-from app.models.property import Property
+from app.models.property import Property, PropertyImage
 from app.models.reservation import Reservation, ReservationStatus, BookingGuest
 from app.models.payment import PaymentVoucher
 from app.schemas.reservation import (
     ReservationCreate,
     ReservationResponse,
     ReservationListResponse,
+    ReservationPropertySummary,
     BookingGuestCreate,
     BookingGuestResponse,
     GuestListResponse,
@@ -22,6 +23,58 @@ from app.dependencies import get_current_user, require_role
 from app.services import reservation_service, payment_service, storage_service
 
 router = APIRouter()
+
+
+async def _build_reservation_response(
+    db: AsyncSession, reservation: Reservation
+) -> ReservationResponse:
+    return (await _build_reservation_responses(db, [reservation]))[0]
+
+
+async def _build_reservation_responses(
+    db: AsyncSession, reservations: Iterable[Reservation]
+) -> list[ReservationResponse]:
+    reservations = list(reservations)
+    if not reservations:
+        return []
+
+    property_ids = {r.property_id for r in reservations}
+    props_result = await db.execute(
+        select(Property).where(Property.id.in_(property_ids))
+    )
+    properties = {p.id: p for p in props_result.scalars().all()}
+
+    images_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id.in_(property_ids))
+        .order_by(PropertyImage.sort_order)
+    )
+    cover_image: dict = {}
+    for img in images_result.scalars().all():
+        cover_image.setdefault(img.property_id, img)
+
+    out: list[ReservationResponse] = []
+    for r in reservations:
+        prop = properties.get(r.property_id)
+        summary = None
+        if prop is not None:
+            image_url = None
+            cover = cover_image.get(prop.id)
+            if cover is not None:
+                image_url = storage_service.get_public_url(
+                    storage_service.BUCKET_PROPERTY_IMAGES, cover.minio_key
+                )
+            summary = ReservationPropertySummary(
+                id=prop.id,
+                owner_id=prop.owner_id,
+                name=prop.name,
+                address=prop.address,
+                image_url=image_url,
+            )
+        data = ReservationResponse.model_validate(r)
+        data.property = summary
+        out.append(data)
+    return out
 
 
 @router.post("", response_model=ReservationResponse, status_code=status.HTTP_201_CREATED)
@@ -39,7 +92,9 @@ async def create_reservation(
         num_adults=body.num_adults,
         num_children=body.num_children,
     )
-    return reservation
+    await db.commit()
+    await db.refresh(reservation)
+    return await _build_reservation_response(db, reservation)
 
 
 @router.get("", response_model=ReservationListResponse)
@@ -83,8 +138,9 @@ async def list_reservations(
     )
     reservations = result.scalars().all()
 
+    items = await _build_reservation_responses(db, reservations)
     return ReservationListResponse(
-        items=list(reservations), total=total, page=page, page_size=page_size
+        items=items, total=total, page=page, page_size=page_size
     )
 
 
@@ -103,7 +159,7 @@ async def get_reservation(
         )
 
     await _assert_can_access_reservation(current_user, reservation, db)
-    return reservation
+    return await _build_reservation_response(db, reservation)
 
 
 @router.patch("/{reservation_id}/approve", response_model=ReservationResponse)
@@ -118,7 +174,7 @@ async def approve_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
-    return reservation
+    return await _build_reservation_response(db, reservation)
 
 
 @router.patch("/{reservation_id}/reject", response_model=ReservationResponse)
@@ -133,7 +189,7 @@ async def reject_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
-    return reservation
+    return await _build_reservation_response(db, reservation)
 
 
 @router.patch("/{reservation_id}/cancel", response_model=ReservationResponse)
@@ -174,7 +230,7 @@ async def cancel_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
-    return reservation
+    return await _build_reservation_response(db, reservation)
 
 
 @router.post("/{reservation_id}/voucher", response_model=PaymentVoucherResponse, status_code=status.HTTP_201_CREATED)
@@ -226,7 +282,9 @@ async def confirm_payment(
         )
 
     reservation = await reservation_service.confirm_reservation_with_payment(db, reservation)
-    return reservation
+    await db.commit()
+    await db.refresh(reservation)
+    return await _build_reservation_response(db, reservation)
 
 
 @router.post("/{reservation_id}/guests", response_model=BookingGuestResponse, status_code=status.HTTP_201_CREATED)

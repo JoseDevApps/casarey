@@ -1,14 +1,13 @@
 'use client'
 
 import useSWR from 'swr'
-import { use, useState } from 'react'
+import { use, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays, Users, CreditCard, Upload } from 'lucide-react'
-import type { Reservation, PaymentMethod, BookingGuest } from '@/types/index'
+import { ArrowLeft, CalendarDays, Users, CreditCard, Upload, X, FileText } from 'lucide-react'
+import type { Reservation, PaymentMethod, BookingGuest, Paginated } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ReservationStatusBadge } from '@/components/reservation-status-badge'
-import { FileUploader } from '@/components/file-uploader'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 
@@ -17,11 +16,11 @@ function fetcher(url: string) {
 }
 
 function paymentsFetcher(url: string) {
-  return apiFetch<PaymentMethod[]>(url)
+  return apiFetch<{ items: PaymentMethod[]; total: number }>(url)
 }
 
 function guestsFetcher(url: string) {
-  return apiFetch<BookingGuest[]>(url)
+  return apiFetch<Paginated<BookingGuest>>(url)
 }
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
@@ -39,7 +38,9 @@ interface Props {
 export default function ClientReservationDetailPage({ params }: Props) {
   const { id } = use(params)
   const { toast } = useToast()
-  const [uploadedVoucherKey, setUploadedVoucherKey] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [voucherFile, setVoucherFile] = useState<File | null>(null)
+  const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
   const [submittingVoucher, setSubmittingVoucher] = useState(false)
 
   const { data: reservation, error, mutate } = useSWR(
@@ -47,30 +48,65 @@ export default function ClientReservationDetailPage({ params }: Props) {
     fetcher
   )
 
-  const { data: paymentMethods } = useSWR(
-    reservation?.status === 'APPROVED_WAITING_PAYMENT'
-      ? '/api/payment-methods'
+  const ownerId = reservation?.property?.owner_id
+  const { data: paymentMethodsData } = useSWR(
+    reservation?.status === 'APPROVED_WAITING_PAYMENT' && ownerId
+      ? `/api/payment-methods?owner_id=${ownerId}`
       : null,
     paymentsFetcher
   )
+  const paymentMethods = paymentMethodsData?.items
 
-  const { data: guests } = useSWR(
+  const { data: guestsData } = useSWR(
     reservation?.status === 'CONFIRMED'
       ? `/api/reservations/${id}/guests`
       : null,
     guestsFetcher
   )
+  const guests = guestsData?.items
+
+  function selectFile(file: File | null) {
+    if (voucherPreview) URL.revokeObjectURL(voucherPreview)
+    if (!file) {
+      setVoucherFile(null)
+      setVoucherPreview(null)
+      return
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowed.includes(file.type)) {
+      toast('Tipo de archivo no permitido (jpg, png, webp o pdf)', 'error')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast('El archivo excede 10 MB', 'error')
+      return
+    }
+    setVoucherFile(file)
+    setVoucherPreview(file.type.startsWith('image/') ? URL.createObjectURL(file) : null)
+  }
 
   async function submitVoucher() {
-    if (!uploadedVoucherKey) return
+    if (!voucherFile) return
     setSubmittingVoucher(true)
     try {
-      await apiFetch(`/api/reservations/${id}/voucher`, {
+      const formData = new FormData()
+      formData.append('file', voucherFile)
+      const res = await fetch(`/api/reservations/${id}/voucher`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voucher_key: uploadedVoucherKey }),
+        credentials: 'include',
+        body: formData,
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        const detail = (err as { detail?: { detail?: string } | string }).detail
+        const message =
+          typeof detail === 'string'
+            ? detail
+            : detail?.detail || 'Error al enviar comprobante'
+        throw new Error(message)
+      }
       toast('Comprobante enviado correctamente', 'success')
+      selectFile(null)
       mutate()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al enviar comprobante', 'error')
@@ -220,7 +256,7 @@ export default function ClientReservationDetailPage({ params }: Props) {
           </div>
 
           {/* Payment section */}
-          {reservation.status === 'APPROVED_WAITING_PAYMENT' && paymentMethods && (
+          {reservation.status === 'APPROVED_WAITING_PAYMENT' && (
             <div
               className="rounded-2xl p-6"
               style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
@@ -229,35 +265,116 @@ export default function ClientReservationDetailPage({ params }: Props) {
                 <CreditCard size={16} className="inline mr-2" style={{ color: 'var(--brand-accent)' }} />
                 Métodos de Pago
               </h2>
-              <div className="flex flex-col gap-3 mb-6">
-                {paymentMethods.filter(p => p.is_active).map((method) => (
-                  <div
-                    key={method.id}
-                    className="rounded-xl p-4"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
-                  >
-                    <p className="font-medium text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
-                      {method.name}
-                    </p>
-                    {method.description && (
-                      <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-                        {method.description}
+              {paymentMethods === undefined ? (
+                <div
+                  className="h-20 rounded-xl animate-pulse mb-6"
+                  style={{ background: 'var(--surface-2)' }}
+                />
+              ) : paymentMethods.length === 0 ? (
+                <p
+                  className="text-sm mb-6 rounded-xl p-4"
+                  style={{
+                    background: 'var(--surface-2)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  Este administrador todavía no registró métodos de pago. Contáctalo
+                  para coordinar el pago.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3 mb-6">
+                  {paymentMethods.filter(p => p.is_active).map((method) => (
+                    <div
+                      key={method.id}
+                      className="rounded-xl p-4"
+                      style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
+                    >
+                      <p className="font-medium text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
+                        {method.name}
                       </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {method.description && (
+                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
+                          {method.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
                   <Upload size={14} className="inline mr-1.5" />
                   Subir comprobante de pago
                 </p>
-                <FileUploader
-                  onUpload={(_, key) => setUploadedVoucherKey(key)}
-                  label="Arrastra el comprobante o haz clic para seleccionar"
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
                 />
-                {uploadedVoucherKey && (
+
+                {voucherFile ? (
+                  <div
+                    className="rounded-xl p-4 flex items-center gap-3"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
+                  >
+                    {voucherPreview ? (
+                      <img
+                        src={voucherPreview}
+                        alt="Comprobante"
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: 'var(--surface-3)' }}
+                      >
+                        <FileText size={22} style={{ color: 'var(--brand-accent)' }} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {voucherFile.name}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {(voucherFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => selectFile(null)}
+                      className="p-1.5 rounded-lg"
+                      style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                      aria-label="Quitar archivo"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-all duration-150"
+                    style={{
+                      borderColor: 'var(--border-mid)',
+                      background: 'var(--surface-2)',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <Upload size={20} style={{ color: 'var(--brand-accent)' }} />
+                    <span className="text-sm font-medium">
+                      Selecciona el comprobante
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      JPG, PNG, WEBP o PDF — máx 10 MB
+                    </span>
+                  </button>
+                )}
+
+                {voucherFile && (
                   <Button
                     onClick={submitVoucher}
                     loading={submittingVoucher}

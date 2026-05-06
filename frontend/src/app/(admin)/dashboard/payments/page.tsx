@@ -1,49 +1,57 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react'
+import Image from 'next/image'
+import { Plus, Pencil, Trash2, CreditCard, Upload, X } from 'lucide-react'
 import type { PaymentMethod } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
+import { getImageUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { FileUploader } from '@/components/file-uploader'
 import { useToast } from '@/components/ui/toast'
 
 function fetcher(url: string) {
-  return apiFetch<PaymentMethod[]>(url)
+  return apiFetch<{ items: PaymentMethod[]; total: number }>(url)
 }
 
 interface MethodForm {
   name: string
   description: string
-  minio_key: string
   is_active: boolean
 }
 
 const EMPTY_FORM: MethodForm = {
   name: '',
   description: '',
-  minio_key: '',
   is_active: true,
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB (matches backend)
+
 export default function AdminPaymentsPage() {
   const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<MethodForm>(EMPTY_FORM)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const { data: methods, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     '/api/payment-methods',
     fetcher
   )
+  const methods = data?.items
 
   function openNew() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    clearImageState()
     setShowForm(true)
   }
 
@@ -52,16 +60,66 @@ export default function AdminPaymentsPage() {
     setForm({
       name: method.name,
       description: method.description ?? '',
-      minio_key: method.minio_key ?? '',
       is_active: method.is_active,
     })
+    clearImageState()
+    setCurrentImageUrl(
+      method.minio_key ? getImageUrl(method.minio_key, 'payment-methods') : null
+    )
     setShowForm(true)
+  }
+
+  function clearImageState() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImageFile(null)
+    setImagePreview(null)
+    setCurrentImageUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function selectFile(file: File | null) {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    if (!file) {
+      setImageFile(null)
+      setImagePreview(null)
+      return
+    }
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast('Formato no permitido (jpg, png, webp)', 'error')
+      return
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast('La imagen excede 5 MB', 'error')
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
   }
 
   function cancel() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    clearImageState()
+  }
+
+  async function uploadImage(methodId: string, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`/api/payment-methods/${methodId}/image`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      const detail = (err as { detail?: { detail?: string } | string }).detail
+      const message =
+        typeof detail === 'string'
+          ? detail
+          : detail?.detail || 'Error al subir la imagen'
+      throw new Error(message)
+    }
   }
 
   async function handleSave() {
@@ -71,21 +129,34 @@ export default function AdminPaymentsPage() {
     }
     setSaving(true)
     try {
+      let methodId: string
       if (editingId) {
         await apiFetch(`/api/payment-methods/${editingId}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
-        toast('Método de pago actualizado', 'success')
+        methodId = editingId
       } else {
-        await apiFetch('/api/payment-methods', {
+        const created = await apiFetch<PaymentMethod>('/api/payment-methods', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({
+            name: form.name,
+            description: form.description || null,
+          }),
         })
-        toast('Método de pago creado', 'success')
+        methodId = created.id
       }
+
+      if (imageFile) {
+        await uploadImage(methodId, imageFile)
+      }
+
+      toast(
+        editingId ? 'Método de pago actualizado' : 'Método de pago creado',
+        'success'
+      )
       mutate()
       cancel()
     } catch (err) {
@@ -150,16 +221,88 @@ export default function AdminPaymentsPage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+
             <div>
-              <p className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Imagen QR (opcional)
               </p>
-              <FileUploader
-                onUpload={(_, key) => setForm({ ...form, minio_key: key })}
-                label="Subir código QR"
-                currentImageUrl={form.minio_key ? undefined : undefined}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_TYPES.join(',')}
+                className="hidden"
+                onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
               />
+
+              {imagePreview || currentImageUrl ? (
+                <div
+                  className="rounded-xl p-3 flex items-center gap-3"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
+                >
+                  <div
+                    className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0"
+                    style={{ background: 'var(--surface-3)' }}
+                  >
+                    <Image
+                      src={imagePreview ?? currentImageUrl ?? ''}
+                      alt="QR del método"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                      {imageFile?.name ?? 'Imagen actual'}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {imageFile
+                        ? `${(imageFile.size / 1024).toFixed(1)} KB · se reemplazará al guardar`
+                        : 'Sin cambios'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-1.5 rounded-lg"
+                      style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                      aria-label="Cambiar imagen"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectFile(null)}
+                      className="p-1.5 rounded-lg"
+                      style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                      aria-label="Quitar imagen"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-all duration-150"
+                  style={{
+                    borderColor: 'var(--border-mid)',
+                    background: 'var(--surface-2)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Upload size={20} style={{ color: 'var(--brand-accent)' }} />
+                  <span className="text-sm font-medium">Selecciona una imagen</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    JPG, PNG o WEBP — máx 5 MB
+                  </span>
+                </button>
+              )}
             </div>
+
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -210,9 +353,31 @@ export default function AdminPaymentsPage() {
           {methods.map((method) => (
             <div
               key={method.id}
-              className="flex items-start justify-between gap-4 rounded-2xl p-5"
+              className="flex items-start gap-4 rounded-2xl p-5"
               style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
             >
+              {method.minio_key ? (
+                <div
+                  className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0"
+                  style={{ background: 'var(--surface-2)' }}
+                >
+                  <Image
+                    src={getImageUrl(method.minio_key, 'payment-methods')}
+                    alt={`QR ${method.name}`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'var(--surface-2)' }}
+                >
+                  <CreditCard size={22} style={{ color: 'var(--text-muted)' }} />
+                </div>
+              )}
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>

@@ -54,6 +54,14 @@ export interface CalendarEntry {
   blocked_reason?: string
 }
 
+export interface ReservationPropertySummary {
+  id: string
+  owner_id: string
+  name: string
+  address?: string | null
+  image_url?: string | null
+}
+
 export interface Reservation {
   id: string
   property_id: string
@@ -67,7 +75,8 @@ export interface Reservation {
   total_amount: number
   status: ReservationStatus
   created_at: string
-  property?: Property
+  updated_at?: string
+  property?: ReservationPropertySummary | null
   client?: User
 }
 

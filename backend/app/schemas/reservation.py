@@ -14,6 +14,16 @@ class ReservationCreate(BaseModel):
     num_children: int = 0
 
 
+class ReservationPropertySummary(BaseModel):
+    id: UUID
+    owner_id: UUID
+    name: str
+    address: Optional[str] = None
+    image_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class ReservationResponse(BaseModel):
     id: UUID
     property_id: UUID
@@ -28,6 +38,7 @@ class ReservationResponse(BaseModel):
     status: ReservationStatus
     created_at: datetime
     updated_at: datetime
+    property: Optional[ReservationPropertySummary] = None
 
     model_config = {"from_attributes": True}
 

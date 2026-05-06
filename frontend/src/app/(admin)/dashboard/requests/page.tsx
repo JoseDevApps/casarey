@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { CheckCircle2, XCircle, CreditCard, Users, ChevronDown } from 'lucide-react'
-import type { Reservation, ReservationStatus, BookingGuest } from '@/types/index'
+import type { Reservation, ReservationStatus, BookingGuest, Paginated } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ReservationStatusBadge } from '@/components/reservation-status-badge'
@@ -21,21 +21,22 @@ const STATUS_FILTERS: { value: ReservationStatus | 'ALL'; label: string }[] = [
 ]
 
 function fetcher(url: string) {
-  return apiFetch<Reservation[]>(url)
+  return apiFetch<Paginated<Reservation>>(url)
 }
 
 function guestsFetcher(url: string) {
-  return apiFetch<BookingGuest[]>(url)
+  return apiFetch<{ items: BookingGuest[]; total: number }>(url)
 }
 
 function GuestsPanel({ reservationId }: { reservationId: string }) {
   const { data, isLoading } = useSWR(`/api/reservations/${reservationId}/guests`, guestsFetcher)
   if (isLoading) return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cargando...</p>
-  if (!data || data.length === 0)
+  const guests = data?.items ?? []
+  if (guests.length === 0)
     return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin huéspedes registrados aún.</p>
   return (
     <div className="flex flex-col gap-1.5 mt-3">
-      {data.map((g) => (
+      {guests.map((g) => (
         <div key={g.id} className="flex justify-between text-xs rounded-lg px-3 py-2" style={{ background: 'var(--surface-3)' }}>
           <span style={{ color: 'var(--text-primary)' }}>{g.full_name}</span>
           <span style={{ color: 'var(--text-muted)' }}>CI: {g.id_number}</span>
@@ -51,11 +52,12 @@ export default function AdminRequestsPage() {
   const { toast } = useToast()
 
   const queryParam = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
-  const { data: reservations, error, isLoading, mutate } = useSWR(`/api/reservations${queryParam}`, fetcher)
+  const { data, error, isLoading, mutate } = useSWR(`/api/reservations${queryParam}`, fetcher)
+  const reservations = data?.items
 
   async function handleApprove(id: string) {
     try {
-      await apiFetch(`/api/reservations/${id}/approve`, { method: 'POST' })
+      await apiFetch(`/api/reservations/${id}/approve`, { method: 'PATCH' })
       toast('Reserva aprobada', 'success')
       mutate()
     } catch (err) {
@@ -65,7 +67,7 @@ export default function AdminRequestsPage() {
 
   async function handleReject(id: string) {
     try {
-      await apiFetch(`/api/reservations/${id}/reject`, { method: 'POST' })
+      await apiFetch(`/api/reservations/${id}/reject`, { method: 'PATCH' })
       toast('Reserva rechazada', 'info')
       mutate()
     } catch (err) {
@@ -75,7 +77,7 @@ export default function AdminRequestsPage() {
 
   async function handleConfirmPayment(id: string) {
     try {
-      await apiFetch(`/api/reservations/${id}/confirm-payment`, { method: 'POST' })
+      await apiFetch(`/api/reservations/${id}/confirm-payment`, { method: 'PATCH' })
       toast('Pago confirmado — reserva activa', 'success')
       mutate()
     } catch (err) {

@@ -14,7 +14,16 @@
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell(netstat *)",
       "Bash(docker exec *)",
-      "Bash(read f *)"
+      "Bash(read f *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); s=d['components']['schemas']['ReservationResponse']; print\\(json.dumps\\(s, indent=2\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('role:', d.get\\('user',{}\\).get\\('role'\\), 'id:', d.get\\('user',{}\\).get\\('id'\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); items=d['items']; print\\('total:', d['total']\\); [print\\(p['id'], '|', p['name'], '| owner:', p['owner_id']\\) for p in items]\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(i['id'], '| status:', i['status'], '| prop:', i.get\\('property',{}\\).get\\('name'\\)\\) for i in d['items']]\")",
+      "Bash(grep -o \"occupiedDates[^,}]\\\\{0,200\\\\}\\\\|2026-05-15\\\\|2026-05-20\" /tmp/page.html)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(p, '|', list\\(d['paths'][p].keys\\(\\)\\)\\) for p in d['paths'] if 'approve' in p or 'reject' in p or 'confirm-payment' in p]\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('reservation:', d.get\\('id'\\), 'status:', d.get\\('status'\\)\\)\")",
+      "Bash(python -c \"import sys; lines=sys.stdin.readlines\\(\\); print\\(''.join\\(lines\\)\\)\")"
     ]
   }
 }

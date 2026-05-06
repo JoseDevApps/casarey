@@ -7,7 +7,13 @@ import { cn } from '@/lib/utils'
 interface AvailabilityCalendarProps {
   occupiedDates?: string[]
   blockedDates?: string[]
-  onDateRangeSelect?: (start: string, end: string) => void
+  /**
+   * Called on every click. `end` is null while the user is still picking
+   * (first click or resetting after a complete range). The parent should
+   * mirror these values into its own state so the controlled props
+   * `selectedStart` / `selectedEnd` stay in sync.
+   */
+  onDateRangeSelect?: (start: string, end: string | null) => void
   selectedStart?: string
   selectedEnd?: string
 }
@@ -73,18 +79,27 @@ export function AvailabilityCalendar({
     if (date < today) return
     if (occupiedSet.has(dateStr) || blockedSet.has(dateStr)) return
 
+    // Starting a new selection: either nothing picked yet, or a complete
+    // range exists and the user wants to start over.
     if (!selectedStart || (selectedStart && selectedEnd)) {
       setInternalStart(dateStr)
       setInternalEnd(null)
-    } else {
-      if (dateStr < selectedStart) {
-        setInternalStart(dateStr)
-        setInternalEnd(null)
-      } else {
-        setInternalEnd(dateStr)
-        onDateRangeSelect?.(selectedStart, dateStr)
-      }
+      onDateRangeSelect?.(dateStr, null)
+      return
     }
+
+    // Picking the second date but it's earlier than the first → treat as
+    // a fresh start instead of an inverted range.
+    if (dateStr < selectedStart) {
+      setInternalStart(dateStr)
+      setInternalEnd(null)
+      onDateRangeSelect?.(dateStr, null)
+      return
+    }
+
+    // Completing the range.
+    setInternalEnd(dateStr)
+    onDateRangeSelect?.(selectedStart, dateStr)
   }
 
   function getDayStatus(dateStr: string) {
@@ -142,6 +157,17 @@ export function AvailabilityCalendar({
             const inRange = isInRange(dateStr)
             const isStart = isRangeStart(dateStr)
             const isEnd = isRangeEnd(dateStr)
+            const isSingle = isStart && (!selectedEnd || selectedStart === selectedEnd)
+            // Round only the outer side of start/end so they visually
+            // connect to the in-range cells between them.
+            const edgeRadius =
+              isSingle
+                ? 'var(--radius-md)'
+                : isStart
+                  ? 'var(--radius-md) 0 0 var(--radius-md)'
+                  : isEnd
+                    ? '0 var(--radius-md) var(--radius-md) 0'
+                    : undefined
 
             return (
               <button
@@ -152,20 +178,19 @@ export function AvailabilityCalendar({
                 onMouseEnter={() => setHovered(dateStr)}
                 onMouseLeave={() => setHovered(null)}
                 aria-label={dateStr}
+                aria-pressed={isStart || isEnd}
                 className={cn(
-                  'relative aspect-square flex items-center justify-center text-xs rounded-md transition-all duration-100',
+                  'relative aspect-square flex items-center justify-center text-xs rounded-md transition-all duration-150 ease-out',
                   status === 'past' && 'opacity-25 cursor-not-allowed',
-                  status === 'occupied' && 'cursor-not-allowed rounded-md',
-                  status === 'blocked' && 'cursor-not-allowed rounded-md',
+                  status === 'occupied' && 'cursor-not-allowed',
+                  status === 'blocked' && 'cursor-not-allowed',
                   status === 'available' &&
                     !isStart &&
                     !isEnd &&
                     !inRange &&
                     'hover:bg-[var(--surface-3)] cursor-pointer',
-                  inRange &&
-                    'rounded-none',
-                  (isStart || isEnd) &&
-                    'font-bold'
+                  (isStart || isEnd) && 'font-bold scale-[1.04] shadow-md ring-1 ring-[color:var(--brand-accent)]',
+                  inRange && 'animate-[fadeIn_180ms_ease-out]'
                 )}
                 style={{
                   ...(status === 'occupied' && {
@@ -178,14 +203,14 @@ export function AvailabilityCalendar({
                     color: 'var(--text-muted)',
                   }),
                   ...(inRange && {
-                    background: 'rgba(29, 71, 52, 0.35)',
-                    color: 'var(--text-secondary)',
+                    background: 'rgba(29, 71, 52, 0.45)',
+                    color: 'var(--text-primary)',
                     borderRadius: '0',
                   }),
                   ...((isStart || isEnd) && {
                     background: 'var(--brand-primary)',
                     color: 'var(--text-primary)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: edgeRadius,
                   }),
                   ...(status === 'available' && !isStart && !isEnd && !inRange && {
                     color: 'var(--text-secondary)',
