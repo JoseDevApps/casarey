@@ -3,27 +3,33 @@
 import useSWR from 'swr'
 import { apiFetch } from '@/lib/api-client'
 import { formatCurrency } from '@/lib/utils'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Receipt } from 'lucide-react'
 
-interface FinanceSummaryItem {
+interface MonthlyIncomeSummary {
   year: number
   month: number
   property_id: string
   property_name: string
-  total: number
-  reservation_count: number
+  total_income: string
+  confirmed_reservations: number
+}
+
+interface AdminFinanceSummaryResponse {
+  items: MonthlyIncomeSummary[]
+  total_income: string
 }
 
 function fetcher(url: string) {
-  return apiFetch<FinanceSummaryItem[]>(url)
+  return apiFetch<AdminFinanceSummaryResponse>(url)
 }
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
 export default function AdminFinancesPage() {
   const { data, error, isLoading } = useSWR('/api/finances/summary', fetcher)
-
-  const grandTotal = data?.reduce((sum, row) => sum + Number(row.total), 0) ?? 0
+  const items = data?.items ?? []
+  const grandTotal = data ? Number(data.total_income) : 0
+  const totalReservations = items.reduce((sum, row) => sum + row.confirmed_reservations, 0)
 
   return (
     <div>
@@ -34,17 +40,31 @@ export default function AdminFinancesPage() {
         </p>
       </div>
 
-      {/* Summary card */}
-      <div
-        className="rounded-2xl p-6 mb-8 flex items-center gap-5"
-        style={{ background: 'var(--surface-4)', border: '1px solid rgba(224,155,107,0.15)' }}
-      >
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(224,155,107,0.15)' }}>
-          <TrendingUp size={22} style={{ color: 'var(--brand-accent)' }} />
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{ background: 'var(--surface-4)', border: '1px solid rgba(224,155,107,0.15)' }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(224,155,107,0.15)' }}>
+            <TrendingUp size={18} style={{ color: 'var(--brand-accent)' }} />
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Total histórico confirmado</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(grandTotal)}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm mb-0.5" style={{ color: 'var(--text-secondary)' }}>Total histórico confirmado</p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(grandTotal)}</p>
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border-mid)' }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
+            <Receipt size={18} style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Reservas confirmadas</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalReservations}</p>
+          </div>
         </div>
       </div>
 
@@ -62,13 +82,13 @@ export default function AdminFinancesPage() {
         </div>
       )}
 
-      {data && data.length === 0 && (
+      {data && items.length === 0 && (
         <div className="rounded-xl p-12 text-center" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}>
           <p style={{ color: 'var(--text-secondary)' }}>Sin reservas confirmadas aún.</p>
         </div>
       )}
 
-      {data && data.length > 0 && (
+      {items.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}>
           <table className="w-full text-sm">
             <thead>
@@ -81,10 +101,10 @@ export default function AdminFinancesPage() {
               </tr>
             </thead>
             <tbody>
-              {data.map((row, i) => (
+              {items.map((row, i) => (
                 <tr
                   key={`${row.year}-${row.month}-${row.property_id}`}
-                  style={{ borderBottom: i < data.length - 1 ? '1px solid var(--border-soft)' : 'none' }}
+                  style={{ borderBottom: i < items.length - 1 ? '1px solid var(--border-soft)' : 'none' }}
                   className="transition-colors hover:bg-[var(--surface-2)]"
                 >
                   <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -94,14 +114,20 @@ export default function AdminFinancesPage() {
                     {row.property_name}
                   </td>
                   <td className="px-5 py-3.5" style={{ color: 'var(--text-tertiary)' }}>
-                    {row.reservation_count}
+                    {row.confirmed_reservations}
                   </td>
                   <td className="px-5 py-3.5 font-semibold" style={{ color: 'var(--brand-accent)' }}>
-                    {formatCurrency(row.total)}
+                    {formatCurrency(Number(row.total_income))}
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr style={{ borderTop: '1px solid var(--border-mid)' }}>
+                <td colSpan={3} className="px-5 py-3.5 font-semibold text-right" style={{ color: 'var(--text-secondary)' }}>Total</td>
+                <td className="px-5 py-3.5 font-bold text-base" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(grandTotal)}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

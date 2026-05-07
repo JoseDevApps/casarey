@@ -23,6 +23,23 @@ export function getImageUrl(minioKey: string, bucket: string = 'property-images'
   return `/minio/${bucket}/${minioKey}`
 }
 
+/**
+ * Converts a MinIO URL returned by the backend (`http://minio:9000/...` or
+ * a presigned variant carrying SigV4 query params) into a browser-reachable
+ * path that goes through the Next.js `/minio/:path*` rewrite. The rewrite
+ * proxies to `http://minio:9000`, so the signed `Host: minio:9000` stays
+ * intact and the signature still validates.
+ */
+export function toBrowserUrl(internalUrl: string | null | undefined): string | null {
+  if (!internalUrl) return null
+  try {
+    const parsed = new URL(internalUrl)
+    return `/minio${parsed.pathname}${parsed.search}`
+  } catch {
+    return internalUrl.startsWith('/') ? internalUrl : null
+  }
+}
+
 export function getDaysBetween(start: string, end: string): number {
   const startDate = new Date(start)
   const endDate = new Date(end)

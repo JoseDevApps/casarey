@@ -260,6 +260,49 @@ async def upload_voucher(
     )
 
 
+@router.get("/{reservation_id}/voucher", response_model=PaymentVoucherResponse)
+async def get_voucher(
+    reservation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns the payment voucher metadata + a presigned URL.
+
+    Bucket is private; the URL expires in one hour and must be served
+    through the Next.js `/minio` rewrite so the signed Host stays as
+    `minio:9000` (matching what the signature was computed against)."""
+    res = await db.execute(select(Reservation).where(Reservation.id == reservation_id))
+    reservation = res.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"detail": "Reserva no encontrada", "code": "NOT_FOUND"},
+        )
+
+    await _assert_can_access_reservation(current_user, reservation, db)
+
+    voucher_result = await db.execute(
+        select(PaymentVoucher).where(PaymentVoucher.reservation_id == reservation_id)
+    )
+    voucher = voucher_result.scalar_one_or_none()
+    if not voucher:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"detail": "No hay comprobante cargado", "code": "VOUCHER_NOT_FOUND"},
+        )
+
+    url = storage_service.get_presigned_url(
+        storage_service.BUCKET_PAYMENT_VOUCHERS, voucher.minio_key
+    )
+    return PaymentVoucherResponse(
+        id=voucher.id,
+        reservation_id=voucher.reservation_id,
+        minio_key=voucher.minio_key,
+        uploaded_at=voucher.uploaded_at,
+        url=url,
+    )
+
+
 @router.patch("/{reservation_id}/confirm-payment", response_model=ReservationResponse)
 async def confirm_payment(
     reservation_id: UUID,

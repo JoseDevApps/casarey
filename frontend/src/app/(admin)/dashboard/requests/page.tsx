@@ -2,14 +2,22 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import Link from 'next/link'
-import { CheckCircle2, XCircle, CreditCard, Users, ChevronDown } from 'lucide-react'
+import { CheckCircle2, XCircle, CreditCard, Users, ChevronDown, Receipt } from 'lucide-react'
 import type { Reservation, ReservationStatus, BookingGuest, Paginated } from '@/types/index'
-import { apiFetch } from '@/lib/api-client'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { apiFetch, APIError } from '@/lib/api-client'
+import { formatCurrency, formatDate, toBrowserUrl } from '@/lib/utils'
 import { ReservationStatusBadge } from '@/components/reservation-status-badge'
+import { VoucherViewer } from '@/components/voucher-viewer'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
+
+interface VoucherInfo {
+  id: string
+  reservation_id: string
+  minio_key: string
+  uploaded_at: string
+  url: string
+}
 
 const STATUS_FILTERS: { value: ReservationStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Todas' },
@@ -42,6 +50,70 @@ function GuestsPanel({ reservationId }: { reservationId: string }) {
           <span style={{ color: 'var(--text-muted)' }}>CI: {g.id_number}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+async function voucherFetcher(url: string): Promise<VoucherInfo | null> {
+  try {
+    return await apiFetch<VoucherInfo>(url)
+  } catch (err) {
+    if (err instanceof APIError && err.status === 404) return null
+    throw err
+  }
+}
+
+function VoucherPanel({ reservationId }: { reservationId: string }) {
+  const { data: voucher, isLoading } = useSWR(
+    `/api/reservations/${reservationId}/voucher`,
+    voucherFetcher
+  )
+
+  if (isLoading) {
+    return (
+      <div
+        className="rounded-xl mt-3 mb-1 h-32 animate-pulse"
+        style={{ background: 'var(--surface-2)' }}
+      />
+    )
+  }
+
+  if (!voucher) {
+    return (
+      <div
+        className="rounded-xl mt-3 mb-1 p-3 text-xs flex items-center gap-2"
+        style={{
+          background: 'rgba(224, 183, 107, 0.1)',
+          color: 'var(--color-warning)',
+          border: '1px solid rgba(224,183,107,0.25)',
+        }}
+      >
+        <Receipt size={14} />
+        El cliente aún no ha subido el comprobante de pago.
+      </div>
+    )
+  }
+
+  const browserUrl = toBrowserUrl(voucher.url)
+
+  return (
+    <div
+      className="rounded-xl mt-3 mb-1 p-3"
+      style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
+    >
+      <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+        <Receipt size={12} />
+        Comprobante recibido · {formatDate(voucher.uploaded_at)}
+      </p>
+      {browserUrl && (
+        <div className="max-w-sm">
+          <VoucherViewer
+            url={browserUrl}
+            minioKey={voucher.minio_key}
+            variant="full"
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -162,6 +234,10 @@ export default function AdminRequestsPage() {
                   <p className="text-lg font-bold" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(res.total_amount)}</p>
                 </div>
               </div>
+
+              {(res.status === 'APPROVED_WAITING_PAYMENT' || res.status === 'CONFIRMED') && (
+                <VoucherPanel reservationId={res.id} />
+              )}
 
               <div className="flex flex-wrap gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-soft)' }}>
                 {res.status === 'PENDING_APPROVAL' && (

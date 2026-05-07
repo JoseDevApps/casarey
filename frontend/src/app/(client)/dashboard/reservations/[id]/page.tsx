@@ -3,11 +3,21 @@
 import useSWR from 'swr'
 import { use, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays, Users, CreditCard, Upload, X, FileText } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowLeft, CalendarDays, Users, CreditCard, Upload, X, FileText, CheckCircle2 } from 'lucide-react'
 import type { Reservation, PaymentMethod, BookingGuest, Paginated } from '@/types/index'
-import { apiFetch } from '@/lib/api-client'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { apiFetch, APIError } from '@/lib/api-client'
+import { formatCurrency, formatDate, getImageUrl, toBrowserUrl } from '@/lib/utils'
+
+interface VoucherInfo {
+  id: string
+  reservation_id: string
+  minio_key: string
+  uploaded_at: string
+  url: string
+}
 import { ReservationStatusBadge } from '@/components/reservation-status-badge'
+import { VoucherViewer } from '@/components/voucher-viewer'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 
@@ -21,6 +31,16 @@ function paymentsFetcher(url: string) {
 
 function guestsFetcher(url: string) {
   return apiFetch<Paginated<BookingGuest>>(url)
+}
+
+async function voucherFetcher(url: string): Promise<VoucherInfo | null> {
+  try {
+    return await apiFetch<VoucherInfo>(url)
+  } catch (err) {
+    // 404 = no voucher uploaded yet — render empty state, not an error
+    if (err instanceof APIError && err.status === 404) return null
+    throw err
+  }
 }
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
@@ -65,6 +85,15 @@ export default function ClientReservationDetailPage({ params }: Props) {
   )
   const guests = guestsData?.items
 
+  const showVoucher = reservation
+    ? ['APPROVED_WAITING_PAYMENT', 'CONFIRMED'].includes(reservation.status)
+    : false
+  const { data: voucher, mutate: mutateVoucher } = useSWR(
+    showVoucher ? `/api/reservations/${id}/voucher` : null,
+    voucherFetcher
+  )
+  const voucherBrowserUrl = voucher ? toBrowserUrl(voucher.url) : null
+
   function selectFile(file: File | null) {
     if (voucherPreview) URL.revokeObjectURL(voucherPreview)
     if (!file) {
@@ -108,6 +137,7 @@ export default function ClientReservationDetailPage({ params }: Props) {
       toast('Comprobante enviado correctamente', 'success')
       selectFile(null)
       mutate()
+      mutateVoucher()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al enviar comprobante', 'error')
     } finally {
@@ -293,9 +323,27 @@ export default function ClientReservationDetailPage({ params }: Props) {
                         {method.name}
                       </p>
                       {method.description && (
-                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
+                        <p className="text-sm whitespace-pre-wrap mb-3" style={{ color: 'var(--text-secondary)' }}>
                           {method.description}
                         </p>
+                      )}
+                      {method.minio_key && (
+                        <a
+                          href={getImageUrl(method.minio_key, 'payment-methods')}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block mx-auto relative w-48 h-48 rounded-lg overflow-hidden ring-1 ring-[var(--border-soft)] hover:ring-[var(--brand-accent)] transition-all duration-150"
+                          style={{ background: 'white' }}
+                          aria-label={`Abrir QR de ${method.name} a tamaño completo`}
+                        >
+                          <Image
+                            src={getImageUrl(method.minio_key, 'payment-methods')}
+                            alt={`QR ${method.name}`}
+                            fill
+                            sizes="192px"
+                            className="object-contain p-2"
+                          />
+                        </a>
                       )}
                     </div>
                   ))}
@@ -303,11 +351,6 @@ export default function ClientReservationDetailPage({ params }: Props) {
               )}
 
               <div>
-                <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
-                  <Upload size={14} className="inline mr-1.5" />
-                  Subir comprobante de pago
-                </p>
-
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -316,42 +359,89 @@ export default function ClientReservationDetailPage({ params }: Props) {
                   onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
                 />
 
+                {/* Already-uploaded voucher (persistido) */}
+                {voucher && voucherBrowserUrl && !voucherFile && (
+                  <div
+                    className="rounded-xl p-4 mb-4"
+                    style={{
+                      background: 'rgba(52, 168, 83, 0.08)',
+                      border: '1px solid rgba(52,168,83,0.25)',
+                    }}
+                  >
+                    <p className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--color-success)' }}>
+                      <CheckCircle2 size={15} />
+                      Comprobante enviado · {formatDate(voucher.uploaded_at)}
+                    </p>
+                    <VoucherViewer
+                      url={voucherBrowserUrl}
+                      minioKey={voucher.minio_key}
+                      variant="full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs mt-3 underline"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Reemplazar comprobante
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  <Upload size={14} className="inline mr-1.5" />
+                  {voucher ? 'Reemplazar comprobante' : 'Subir comprobante de pago'}
+                </p>
+
                 {voucherFile ? (
                   <div
-                    className="rounded-xl p-4 flex items-center gap-3"
+                    className="rounded-xl p-4"
                     style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
                   >
                     {voucherPreview ? (
-                      <img
-                        src={voucherPreview}
-                        alt="Comprobante"
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
+                      <div
+                        className="relative w-full rounded-lg overflow-hidden mb-3"
+                        style={{ aspectRatio: '4/3', background: 'var(--surface-3)' }}
+                      >
+                        <Image
+                          src={voucherPreview}
+                          alt="Vista previa del comprobante"
+                          fill
+                          unoptimized
+                          sizes="(max-width: 1024px) 100vw, 600px"
+                          className="object-contain"
+                        />
+                      </div>
                     ) : (
                       <div
-                        className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0"
+                        className="rounded-lg flex items-center gap-3 p-4 mb-3"
                         style={{ background: 'var(--surface-3)' }}
                       >
-                        <FileText size={22} style={{ color: 'var(--brand-accent)' }} />
+                        <FileText size={28} style={{ color: 'var(--brand-accent)' }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                            {voucherFile.name}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {(voucherFile.size / 1024).toFixed(1)} KB · PDF listo para subir
+                          </p>
+                        </div>
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                        {voucherFile.name}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs truncate flex-1" style={{ color: 'var(--text-muted)' }}>
+                        {voucherFile.name} · {(voucherFile.size / 1024).toFixed(1)} KB
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {(voucherFile.size / 1024).toFixed(1)} KB
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => selectFile(null)}
+                        className="p-1.5 rounded-lg shrink-0"
+                        style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
+                        aria-label="Quitar archivo"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => selectFile(null)}
-                      className="p-1.5 rounded-lg"
-                      style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
-                      aria-label="Quitar archivo"
-                    >
-                      <X size={14} />
-                    </button>
                   </div>
                 ) : (
                   <button
@@ -381,10 +471,28 @@ export default function ClientReservationDetailPage({ params }: Props) {
                     variant="forest"
                     className="mt-4 w-full"
                   >
-                    Enviar Comprobante
+                    {voucher ? 'Reemplazar Comprobante' : 'Enviar Comprobante'}
                   </Button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Voucher visible cuando ya está confirmada */}
+          {reservation.status === 'CONFIRMED' && voucher && voucherBrowserUrl && (
+            <div
+              className="rounded-2xl p-6"
+              style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
+            >
+              <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <CheckCircle2 size={16} style={{ color: 'var(--color-success)' }} />
+                Comprobante de pago
+              </h2>
+              <VoucherViewer
+                url={voucherBrowserUrl}
+                minioKey={voucher.minio_key}
+                variant="full"
+              />
             </div>
           )}
 
