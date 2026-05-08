@@ -114,7 +114,7 @@ export default function AdminCalendarPage({ params }: Props) {
             blockedDates={blockedDates}
             onDateRangeSelect={(start, end) => {
               setBlockStart(start)
-              setBlockEnd(end)
+              setBlockEnd(end ?? '')
             }}
           />
         </div>
