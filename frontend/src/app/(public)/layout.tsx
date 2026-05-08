@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Home } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export default function PublicLayout({
   children,
@@ -11,7 +11,7 @@ export default function PublicLayout({
       <header
         className="sticky top-0 z-40"
         style={{
-          background: 'rgba(5, 5, 5, 0.92)',
+          background: 'rgba(8, 18, 13, 0.92)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border-soft)',
         }}
@@ -20,19 +20,10 @@ export default function PublicLayout({
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 font-bold text-lg transition-opacity hover:opacity-80"
-            style={{ color: 'var(--text-primary)' }}
+            className="flex items-center transition-opacity hover:opacity-80"
+            aria-label="Cabañas Coroico — inicio"
           >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--brand-primary)' }}
-            >
-              <Home size={16} style={{ color: 'var(--brand-accent)' }} />
-            </div>
-            <span>
-              Casa del {' '}
-              <span style={{ color: 'var(--brand-accent)' }}>Rey</span>
-            </span>
+            <Logo variant="full" size={28} tone="onForest" />
           </Link>
 
           {/* Nav links */}
@@ -60,7 +51,7 @@ export default function PublicLayout({
               className="btn-primary text-sm px-4 py-2 rounded-lg font-semibold"
               style={{
                 background: 'var(--brand-accent)',
-                color: 'rgb(5,5,5)',
+                color: 'var(--color-bone, rgb(249,244,230))',
               }}
             >
               Iniciar Sesión
@@ -80,8 +71,7 @@ export default function PublicLayout({
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            &copy; {new Date().getFullYear()} Casas de Campo. Todos los derechos
-            reservados.
+            &copy; {new Date().getFullYear()} Cabañas Coroico — Yungas, Bolivia.
           </p>
           <div className="flex items-center gap-6">
             <Link

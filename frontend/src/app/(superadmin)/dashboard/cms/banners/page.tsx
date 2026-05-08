@@ -48,7 +48,7 @@ function NewBannerForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="block text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Título *</label>
-          <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bienvenido a Casas de Campo" required />
+          <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bienvenido a Cabañas Coroico" required />
         </div>
         <div>
           <label className="block text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Subtítulo</label>

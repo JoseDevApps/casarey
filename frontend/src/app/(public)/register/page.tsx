@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Home, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/logo'
 
 const schema = z
   .object({
@@ -76,16 +77,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-xl">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'var(--brand-primary)' }}
-            >
-              <Home size={20} style={{ color: 'var(--brand-accent)' }} />
-            </div>
-            <span style={{ color: 'var(--text-primary)' }}>
-              Casas de <span style={{ color: 'var(--brand-accent)' }}>Campo</span>
-            </span>
+          <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
+            <Logo variant="full" size={32} tone="onForest" />
           </Link>
         </div>
 

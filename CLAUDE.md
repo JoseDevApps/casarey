@@ -1,6 +1,7 @@
 # Casas de Campo — Documentación Técnica Completa
 
 ## Índice
+
 1. [Visión General](#1-visión-general)
 2. [Arquitectura del Sistema](#2-arquitectura-del-sistema)
 3. [Base de Datos](#3-base-de-datos)
@@ -21,14 +22,14 @@
 
 ### Stack tecnológico
 
-| Capa | Tecnología |
-|------|------------|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4 |
-| Backend | FastAPI (Python 3.12), SQLAlchemy 2 (async), Alembic |
-| Base de datos | PostgreSQL 16 |
-| Almacenamiento | MinIO (S3-compatible) |
-| Auth | JWT (access + refresh tokens via cookies httpOnly) |
-| Contenedores | Docker Compose |
+| Capa           | Tecnología                                                     |
+| -------------- | -------------------------------------------------------------- |
+| Frontend       | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4 |
+| Backend        | FastAPI (Python 3.12), SQLAlchemy 2 (async), Alembic           |
+| Base de datos  | PostgreSQL 16                                                  |
+| Almacenamiento | MinIO (S3-compatible)                                          |
+| Auth           | JWT (access + refresh tokens via cookies httpOnly)             |
+| Contenedores   | Docker Compose                                                 |
 
 ---
 
@@ -218,16 +219,16 @@ backend/
 
 ### Prefijos de rutas
 
-| Router | Prefijo | Descripción |
-|--------|---------|-------------|
-| auth | `/auth` | Login, register, refresh, logout, /me |
-| users | `/users` | CRUD de usuarios (superadmin) |
-| properties | `/properties` | CRUD propiedades + imágenes |
-| calendar | `/properties` | Calendario por propiedad |
-| reservations | `/reservations` | Ciclo de vida de reservas |
-| payments | `/payment-methods` | Métodos de pago del admin |
-| finances | `/finances` | Reportes financieros |
-| cms | `/cms` | Banners, páginas, destacados |
+| Router       | Prefijo            | Descripción                           |
+| ------------ | ------------------ | ------------------------------------- |
+| auth         | `/auth`            | Login, register, refresh, logout, /me |
+| users        | `/users`           | CRUD de usuarios (superadmin)         |
+| properties   | `/properties`      | CRUD propiedades + imágenes           |
+| calendar     | `/properties`      | Calendario por propiedad              |
+| reservations | `/reservations`    | Ciclo de vida de reservas             |
+| payments     | `/payment-methods` | Métodos de pago del admin             |
+| finances     | `/finances`        | Reportes financieros                  |
+| cms          | `/cms`             | Banners, páginas, destacados          |
 
 ---
 
@@ -281,19 +282,21 @@ src/app/
 ### Sistema de protección de rutas (middleware)
 
 El archivo `middleware.ts` intercepta todas las requests y:
+
 1. Lee la cookie `access_token`
 2. Verifica el JWT y extrae el `role`
 3. Redirige si el usuario no tiene el rol adecuado para la ruta
 
-| Grupo de rutas | Rol requerido |
-|----------------|---------------|
-| `(client)/dashboard` | CLIENT, ADMIN, SUPER_ADMIN |
-| `(admin)/dashboard` | ADMIN, SUPER_ADMIN |
-| `(superadmin)/dashboard` | SUPER_ADMIN |
+| Grupo de rutas           | Rol requerido              |
+| ------------------------ | -------------------------- |
+| `(client)/dashboard`     | CLIENT, ADMIN, SUPER_ADMIN |
+| `(admin)/dashboard`      | ADMIN, SUPER_ADMIN         |
+| `(superadmin)/dashboard` | SUPER_ADMIN                |
 
 ### API Proxy (`/api/[...path]/route.ts`)
 
 Todas las llamadas al backend pasan por este proxy que:
+
 - Construye la URL: `/api/auth/login` → `http://backend:8000/auth/login`
 - Forwarda la cookie de autenticación del browser
 - Soporta `multipart/form-data` para uploads de archivos (usa `req.blob()`)
@@ -312,16 +315,16 @@ Todas las llamadas al backend pasan por este proxy que:
 
 ### Componentes principales
 
-| Componente | Ubicación | Descripción |
-|------------|-----------|-------------|
-| `DashboardSidebar` | `components/` | Sidebar colapsable con items de nav por rol, logout |
-| `AvailabilityCalendar` | `components/` | Calendario dual con selección de rango, fechas ocupadas/bloqueadas |
-| `FileUploader` | `components/` | Drag & drop con progreso XHR, preview de imagen |
-| `PropertyCard` | `components/` | Tarjeta de propiedad para listados públicos |
-| `ReservationStatusBadge` | `components/` | Badge con color según estado de reserva |
-| `Button` | `components/ui/` | Variantes: primary, forest, ghost, destructive |
-| `Input / Textarea / Select` | `components/ui/` | Inputs con label y manejo de errores |
-| `Toast / useToast` | `components/ui/` | Sistema de notificaciones (éxito, error, info, warning) |
+| Componente                  | Ubicación        | Descripción                                                        |
+| --------------------------- | ---------------- | ------------------------------------------------------------------ |
+| `DashboardSidebar`          | `components/`    | Sidebar colapsable con items de nav por rol, logout                |
+| `AvailabilityCalendar`      | `components/`    | Calendario dual con selección de rango, fechas ocupadas/bloqueadas |
+| `FileUploader`              | `components/`    | Drag & drop con progreso XHR, preview de imagen                    |
+| `PropertyCard`              | `components/`    | Tarjeta de propiedad para listados públicos                        |
+| `ReservationStatusBadge`    | `components/`    | Badge con color según estado de reserva                            |
+| `Button`                    | `components/ui/` | Variantes: primary, forest, ghost, destructive                     |
+| `Input / Textarea / Select` | `components/ui/` | Inputs con label y manejo de errores                               |
+| `Toast / useToast`          | `components/ui/` | Sistema de notificaciones (éxito, error, info, warning)            |
 
 ### Sistema de diseño (CSS variables)
 
@@ -363,15 +366,22 @@ El diseño usa un tema oscuro forestal con variables CSS:
 #### `create_reservation(db, property_id, client_id, check_in, check_out, num_adults, num_children)`
 
 1. **Verifica que la propiedad existe** y está activa
+
 2. **Valida el rango de fechas**: `check_out > check_in`, mínimo 1 noche
+
 3. **Detecta conflictos de disponibilidad**: Busca en `property_calendar` si hay días `BOOKED` o `BLOCKED` en el rango solicitado — lanza `422 DATES_NOT_AVAILABLE` si hay conflicto
+
 4. **Congela los precios**: Lee `rate_adult` y `rate_child` actuales de la propiedad
+
 5. **Calcula el monto total**:
+   
    ```
    noches = (check_out - check_in).days
    total = noches × (num_adults × rate_adult + num_children × rate_child)
    ```
+
 6. **Crea la reserva** con estado inicial `PENDING_APPROVAL`
+
 7. **No bloquea el calendario todavía** — las fechas solo se bloquean al confirmar
 
 #### `transition_reservation(db, reservation, new_status)`
@@ -422,12 +432,12 @@ Abstracción sobre el cliente boto3 de MinIO.
 
 #### Buckets creados al inicio (en `lifespan`)
 
-| Bucket | Uso | Política |
-|--------|-----|---------|
-| `property-images` | Imágenes de propiedades | Pública (lectura sin auth) |
-| `payment-vouchers` | Comprobantes de pago | Privada (solo presigned URLs) |
-| `payment-qr` | QR de métodos de pago | Pública |
-| `cms-images` | Imágenes de banners | Pública |
+| Bucket             | Uso                     | Política                      |
+| ------------------ | ----------------------- | ----------------------------- |
+| `property-images`  | Imágenes de propiedades | Pública (lectura sin auth)    |
+| `payment-vouchers` | Comprobantes de pago    | Privada (solo presigned URLs) |
+| `payment-qr`       | QR de métodos de pago   | Pública                       |
+| `cms-images`       | Imágenes de banners     | Pública                       |
 
 #### Métodos principales
 
@@ -465,19 +475,19 @@ require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)  # + verifica rol
 
 ### Matriz de permisos por endpoint
 
-| Operación | CLIENT | ADMIN | SUPER_ADMIN |
-|-----------|--------|-------|-------------|
-| Ver propiedades públicas | ✓ | ✓ | ✓ |
-| Crear reserva | ✓ | — | — |
-| Ver sus reservas | ✓ (propias) | ✓ (de sus propiedades) | ✓ (todas) |
-| Subir voucher | ✓ (propia) | — | — |
-| Aprobar/rechazar reserva | — | ✓ (sus props) | ✓ |
-| Confirmar pago | — | ✓ (sus props) | ✓ |
-| CRUD propiedades | — | ✓ (propias) | ✓ |
-| Gestión calendario | — | ✓ (sus props) | ✓ |
-| Gestión usuarios | — | — | ✓ |
-| CMS (banners, páginas) | — | — | ✓ |
-| Finanzas globales | — | — | ✓ |
+| Operación                | CLIENT      | ADMIN                  | SUPER_ADMIN |
+| ------------------------ | ----------- | ---------------------- | ----------- |
+| Ver propiedades públicas | ✓           | ✓                      | ✓           |
+| Crear reserva            | ✓           | —                      | —           |
+| Ver sus reservas         | ✓ (propias) | ✓ (de sus propiedades) | ✓ (todas)   |
+| Subir voucher            | ✓ (propia)  | —                      | —           |
+| Aprobar/rechazar reserva | —           | ✓ (sus props)          | ✓           |
+| Confirmar pago           | —           | ✓ (sus props)          | ✓           |
+| CRUD propiedades         | —           | ✓ (propias)            | ✓           |
+| Gestión calendario       | —           | ✓ (sus props)          | ✓           |
+| Gestión usuarios         | —           | —                      | ✓           |
+| CMS (banners, páginas)   | —           | —                      | ✓           |
+| Finanzas globales        | —           | —                      | ✓           |
 
 ---
 
@@ -655,12 +665,12 @@ Páginas Estáticas (/cms/pages):
 
 ### Servicios (producción)
 
-| Servicio | Imagen | Puerto host |
-|----------|--------|-------------|
-| frontend | `project-frontend` (Node 22 Alpine) | 3000 |
-| backend | `project-backend` (Python 3.12 slim) | 8000 |
-| db | `postgres:16-alpine` | — (interno) |
-| minio | `minio/minio:RELEASE.2024-11-07T00-52-20Z` | 9001 (consola) |
+| Servicio | Imagen                                     | Puerto host    |
+| -------- | ------------------------------------------ | -------------- |
+| frontend | `project-frontend` (Node 22 Alpine)        | 3000           |
+| backend  | `project-backend` (Python 3.12 slim)       | 8000           |
+| db       | `postgres:16-alpine`                       | — (interno)    |
+| minio    | `minio/minio:RELEASE.2024-11-07T00-52-20Z` | 9001 (consola) |
 
 ### Comandos útiles
 
@@ -692,6 +702,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ### Desarrollo local
 
 El `docker-compose.dev.yml` sobreescribe:
+
 - Frontend: volumen bind `./frontend:/app` + `--turbopack` hot reload
 - Backend: volumen bind `./backend:/app` + `--reload` (via `DEBUG=true` en entrypoint.sh)
 - MinIO: expone puerto 9000 para acceso desde el browser
@@ -719,27 +730,27 @@ MINIO_PASSWORD=<mínimo 8 chars>
 
 ### Variables de entorno del backend (en compose)
 
-| Variable | Descripción |
-|----------|-------------|
-| `DATABASE_URL` | `postgresql+asyncpg://user:pass@db:5432/dbname` |
-| `JWT_SECRET` | Secret para firmar JWT |
-| `JWT_ALGORITHM` | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Default: 15 |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | Default: 7 |
-| `MINIO_ENDPOINT` | `minio:9000` |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | Credenciales MinIO |
-| `MINIO_SECURE` | `false` (true solo con HTTPS) |
-| `CORS_ORIGINS` | `http://localhost:3000` |
-| `DEBUG` | `true` activa `--reload` en uvicorn |
+| Variable                                | Descripción                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `DATABASE_URL`                          | `postgresql+asyncpg://user:pass@db:5432/dbname` |
+| `JWT_SECRET`                            | Secret para firmar JWT                          |
+| `JWT_ALGORITHM`                         | `HS256`                                         |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`           | Default: 15                                     |
+| `REFRESH_TOKEN_EXPIRE_DAYS`             | Default: 7                                      |
+| `MINIO_ENDPOINT`                        | `minio:9000`                                    |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | Credenciales MinIO                              |
+| `MINIO_SECURE`                          | `false` (true solo con HTTPS)                   |
+| `CORS_ORIGINS`                          | `http://localhost:3000`                         |
+| `DEBUG`                                 | `true` activa `--reload` en uvicorn             |
 
 ### Variables de entorno del frontend (en compose)
 
-| Variable | Descripción |
-|----------|-------------|
-| `BACKEND_URL` | `http://backend:8000` (server-side) |
-| `NEXTAUTH_SECRET` | Secret para cookies Next.js |
-| `NEXTAUTH_URL` | URL pública del frontend |
-| `NEXT_PUBLIC_MINIO_URL` | URL pública de MinIO (client-side) |
+| Variable                | Descripción                         |
+| ----------------------- | ----------------------------------- |
+| `BACKEND_URL`           | `http://backend:8000` (server-side) |
+| `NEXTAUTH_SECRET`       | Secret para cookies Next.js         |
+| `NEXTAUTH_URL`          | URL pública del frontend            |
+| `NEXT_PUBLIC_MINIO_URL` | URL pública de MinIO (client-side)  |
 
 ---
 

@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/logo'
 import {
-  Home,
   CalendarDays,
   Building2,
   CreditCard,
@@ -75,22 +75,18 @@ export function DashboardSidebar({ variant, userEmail, userName }: DashboardSide
       }}
     >
       {/* Logo */}
-      <div
-        className="flex items-center gap-2 px-4 h-16"
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 px-4 h-16 transition-opacity hover:opacity-80"
         style={{ borderBottom: '1px solid var(--border-soft)' }}
+        aria-label="Cabañas Coroico — inicio"
       >
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: 'var(--brand-primary)' }}
-        >
-          <Home size={15} style={{ color: 'var(--brand-accent)' }} />
-        </div>
-        {!collapsed && (
-          <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-            Casas de <span style={{ color: 'var(--brand-accent)' }}>Campo</span>
-          </span>
+        {collapsed ? (
+          <Logo variant="mark" size={26} tone="onForest" />
+        ) : (
+          <Logo variant="full" size={26} tone="onForest" />
         )}
-      </div>
+      </Link>
 
       {/* Nav items */}
       <nav className="flex-1 px-2 py-4 flex flex-col gap-0.5 overflow-y-auto">

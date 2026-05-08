@@ -48,16 +48,16 @@ Este documento describe **paso a paso** cómo viaja una request desde el navegad
 
 ### Capas en orden
 
-| # | Capa | Archivo / Componente | Responsabilidad |
-|---|------|----------------------|-----------------|
-| 1 | **Middleware** | `frontend/src/middleware.ts` | Verifica cookie `access_token`, redirige a `/login` si falta para rutas protegidas |
-| 2 | **Server Component (layout)** | `(client)/layout.tsx`, `(admin)/layout.tsx`, `(superadmin)/layout.tsx` | Llama a `/auth/me`, valida rol, redirige al dashboard correcto. **Marcado `force-dynamic`** para no cachear |
-| 3 | **Client Component (page)** | `dashboard/.../page.tsx` | Renderiza UI, hace SWR a `/api/...` |
-| 4 | **API Proxy** | `frontend/src/app/api/[...path]/route.ts` | Reescribe `/api/X` → `http://backend:8000/X`, reenvía cookies y multipart |
-| 5 | **Dependency** | `backend/app/dependencies.py` | `get_current_user`, `require_role(...)` — extrae JWT, busca user en DB |
-| 6 | **Router** | `backend/app/routers/*.py` | Valida input (Pydantic), llama servicio, devuelve respuesta |
-| 7 | **Service** | `backend/app/services/*.py` | Lógica de negocio, transacciones DB, llamadas a MinIO |
-| 8 | **Modelo ORM** | `backend/app/models/*.py` | Mapeo a tablas Postgres (SQLAlchemy 2 async) |
+| #   | Capa                          | Archivo / Componente                                                   | Responsabilidad                                                                                             |
+| --- | ----------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 1   | **Middleware**                | `frontend/src/middleware.ts`                                           | Verifica cookie `access_token`, redirige a `/login` si falta para rutas protegidas                          |
+| 2   | **Server Component (layout)** | `(client)/layout.tsx`, `(admin)/layout.tsx`, `(superadmin)/layout.tsx` | Llama a `/auth/me`, valida rol, redirige al dashboard correcto. **Marcado `force-dynamic`** para no cachear |
+| 3   | **Client Component (page)**   | `dashboard/.../page.tsx`                                               | Renderiza UI, hace SWR a `/api/...`                                                                         |
+| 4   | **API Proxy**                 | `frontend/src/app/api/[...path]/route.ts`                              | Reescribe `/api/X` → `http://backend:8000/X`, reenvía cookies y multipart                                   |
+| 5   | **Dependency**                | `backend/app/dependencies.py`                                          | `get_current_user`, `require_role(...)` — extrae JWT, busca user en DB                                      |
+| 6   | **Router**                    | `backend/app/routers/*.py`                                             | Valida input (Pydantic), llama servicio, devuelve respuesta                                                 |
+| 7   | **Service**                   | `backend/app/services/*.py`                                            | Lógica de negocio, transacciones DB, llamadas a MinIO                                                       |
+| 8   | **Modelo ORM**                | `backend/app/models/*.py`                                              | Mapeo a tablas Postgres (SQLAlchemy 2 async)                                                                |
 
 ---
 
@@ -74,6 +74,7 @@ async def lifespan(app):
 ```
 
 `ensure_buckets()` (en `storage_service.py`):
+
 1. Conecta a MinIO con `boto3` usando `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`
 2. Para cada bucket (`property-images`, `payment-methods`, `payment-vouchers`):
    - `client.head_bucket(Bucket=...)` → si 404 → `client.create_bucket(...)`
@@ -151,6 +152,7 @@ backend/app/dependencies.py::get_current_user
 ```
 
 `require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)` envuelve a `get_current_user` y verifica adicionalmente:
+
 ```python
 if current_user.role not in roles:
     raise 403 INSUFFICIENT_PERMISSIONS
@@ -747,11 +749,11 @@ DELETE /api/cms/featured/{property_id}
 
 ### Buckets y políticas
 
-| Bucket | Política | Contenido | Path interno |
-|--------|----------|-----------|--------------|
-| `property-images` | **Pública** (lectura sin auth) | Imágenes de propiedades + banners CMS | `properties/{prop_id}/{uuid}.ext` ; `banners/{banner_id}/{uuid}.ext` |
-| `payment-methods` | **Pública** | QR de métodos de pago | `methods/{method_id}/{uuid}.ext` |
-| `payment-vouchers` | **Privada** (presigned URL) | Comprobantes de pago de clientes | `vouchers/{reservation_id}/{uuid}.ext` |
+| Bucket             | Política                       | Contenido                             | Path interno                                                         |
+| ------------------ | ------------------------------ | ------------------------------------- | -------------------------------------------------------------------- |
+| `property-images`  | **Pública** (lectura sin auth) | Imágenes de propiedades + banners CMS | `properties/{prop_id}/{uuid}.ext` ; `banners/{banner_id}/{uuid}.ext` |
+| `payment-methods`  | **Pública**                    | QR de métodos de pago                 | `methods/{method_id}/{uuid}.ext`                                     |
+| `payment-vouchers` | **Privada** (presigned URL)    | Comprobantes de pago de clientes      | `vouchers/{reservation_id}/{uuid}.ext`                               |
 
 ### Cómo se sirve cada tipo
 
@@ -767,13 +769,13 @@ VOUCHER (privado)
 
 ### Operaciones disponibles
 
-| Función | Llamada boto3 | Cuándo se usa |
-|---------|---------------|---------------|
-| `upload_file(bucket, key, bytes, ct)` | `put_object(Bucket, Key, Body, ContentType)` | Subir imagen/voucher |
-| `delete_file(bucket, key)` | `delete_object(Bucket, Key)` | Reemplazar voucher, eliminar imagen al borrar entidad |
-| `get_public_url(bucket, key)` | URL construida — no llama a MinIO | Para buckets públicos |
-| `get_presigned_url(bucket, key, expires)` | `generate_presigned_url("get_object", ...)` | Voucher privado |
-| `ensure_buckets()` | `head_bucket` + `create_bucket` + `put_bucket_policy` | Solo en lifespan startup |
+| Función                                   | Llamada boto3                                         | Cuándo se usa                                         |
+| ----------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| `upload_file(bucket, key, bytes, ct)`     | `put_object(Bucket, Key, Body, ContentType)`          | Subir imagen/voucher                                  |
+| `delete_file(bucket, key)`                | `delete_object(Bucket, Key)`                          | Reemplazar voucher, eliminar imagen al borrar entidad |
+| `get_public_url(bucket, key)`             | URL construida — no llama a MinIO                     | Para buckets públicos                                 |
+| `get_presigned_url(bucket, key, expires)` | `generate_presigned_url("get_object", ...)`           | Voucher privado                                       |
+| `ensure_buckets()`                        | `head_bucket` + `create_bucket` + `put_bucket_policy` | Solo en lifespan startup                              |
 
 ---
 
@@ -781,10 +783,10 @@ VOUCHER (privado)
 
 Estas son las operaciones donde la **atomicidad** importa:
 
-| Operación | Por qué es transaccional |
-|-----------|--------------------------|
-| **Crear reserva** | Lock advisory por propiedad + check de disponibilidad + INSERT — evita race conditions entre dos clientes que reservan las mismas fechas |
-| **Confirmar pago** | `status=CONFIRMED` + `INSERT property_calendar BOOKED × N días` deben ocurrir juntos. Si una INSERT viola UNIQUE, todo se revierte |
+| Operación             | Por qué es transaccional                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Crear reserva**     | Lock advisory por propiedad + check de disponibilidad + INSERT — evita race conditions entre dos clientes que reservan las mismas fechas |
+| **Confirmar pago**    | `status=CONFIRMED` + `INSERT property_calendar BOOKED × N días` deben ocurrir juntos. Si una INSERT viola UNIQUE, todo se revierte       |
 | **Refresh de tokens** | `revoked_at = now()` en el viejo + `INSERT` del nuevo + `set_cookie` deben verse atómicos desde el cliente para evitar quedar sin sesión |
 
 Todo lo demás se ejecuta con autocommit en queries individuales.

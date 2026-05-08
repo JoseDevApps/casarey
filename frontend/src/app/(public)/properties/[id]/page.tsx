@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params
   const property = await getProperty(id)
   return {
-    title: property ? `${property.name} — Casas de Campo` : 'Propiedad',
+    title: property ? `${property.name} — Cabañas Coroico` : 'Propiedad',
   }
 }
 

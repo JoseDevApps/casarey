@@ -90,20 +90,20 @@ export default async function LandingPage() {
           </div>
 
           <h1
-            className="text-5xl sm:text-6xl md:text-7xl font-bold leading-[1.05] mb-6"
+            className="font-serif italic text-5xl sm:text-6xl md:text-7xl font-extrabold leading-[1.02] mb-6"
             style={{ color: 'var(--text-primary)' }}
           >
-            Escápate
+            Cabañas
             <br />
-            <span style={{ color: 'var(--brand-accent)' }}>al campo</span>
+            <span style={{ color: 'var(--brand-accent)' }}>en Coroico</span>
           </h1>
 
           <p
             className="text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
             style={{ color: 'var(--text-secondary)' }}
           >
-            Casas rurales únicas para reconectar con la naturaleza. Elige tu
-            refugio, elige tus fechas, y nosotros hacemos el resto.
+            Refugios entre los Yungas de La Paz. Elige tus fechas, llega con la
+            niebla matutina y deja que el bosque haga el resto.
           </p>
 
           {/* CTA */}
@@ -113,10 +113,10 @@ export default async function LandingPage() {
               className="inline-flex items-center gap-2 text-base font-semibold px-8 py-4 rounded-xl transition-all duration-150"
               style={{
                 background: 'var(--brand-accent)',
-                color: 'rgb(5,5,5)',
+                color: 'var(--color-bone, rgb(249,244,230))',
               }}
             >
-              Explorar propiedades
+              Ver cabañas
               <ArrowRight size={18} />
             </Link>
             <Link
@@ -328,10 +328,10 @@ export default async function LandingPage() {
                 }}
               >
                 <div
-                  className="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                  className="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono"
                   style={{
                     background: 'var(--brand-accent)',
-                    color: 'rgb(5,5,5)',
+                    color: 'var(--color-bone, rgb(249,244,230))',
                   }}
                 >
                   {item.step}
@@ -391,7 +391,7 @@ export default async function LandingPage() {
             <Link
               href="/register"
               className="inline-flex items-center gap-2 text-base font-semibold px-8 py-4 rounded-xl transition-all duration-150"
-              style={{ background: 'var(--brand-accent)', color: 'rgb(5,5,5)' }}
+              style={{ background: 'var(--brand-accent)', color: 'var(--color-bone, rgb(249,244,230))' }}
             >
               Crear cuenta gratis
             </Link>

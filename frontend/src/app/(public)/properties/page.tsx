@@ -16,7 +16,7 @@ async function getProperties(): Promise<Property[]> {
 }
 
 export const metadata = {
-  title: 'Propiedades — Casas de Campo',
+  title: 'Propiedades — Cabañas Coroico',
 }
 
 export default async function PropertiesPage() {

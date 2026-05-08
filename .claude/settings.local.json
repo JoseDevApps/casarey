@@ -26,7 +26,10 @@
       "Bash(python -c \"import sys; lines=sys.stdin.readlines\\(\\); print\\(''.join\\(lines\\)\\)\")",
       "Bash(python -c \"import json,sys; lines=sys.stdin.read\\(\\).splitlines\\(\\); body=lines[0]; print\\(json.dumps\\(json.loads\\(body\\), indent=2\\)\\); print\\(lines[-1]\\)\")",
       "Bash(xxd)",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('dev:', d['scripts'].get\\('dev'\\)\\); print\\('build:', d['scripts'].get\\('build'\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('dev:', d['scripts'].get\\('dev'\\)\\); print\\('build:', d['scripts'].get\\('build'\\)\\)\")",
+      "Bash(docker volume *)",
+      "Bash(docker run *)",
+      "Read(//c//**)"
     ]
   }
 }

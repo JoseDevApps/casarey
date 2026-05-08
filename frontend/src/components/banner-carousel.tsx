@@ -117,9 +117,9 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
           <Link
             href="/properties"
             className="inline-flex items-center gap-2 text-base font-semibold px-8 py-4 rounded-xl transition-all duration-150"
-            style={{ background: 'var(--brand-accent)', color: 'rgb(5,5,5)' }}
+            style={{ background: 'var(--brand-accent)', color: 'var(--color-bone, rgb(249,244,230))' }}
           >
-            Explorar propiedades
+            Ver cabañas
             <ArrowRight size={18} />
           </Link>
           <Link
