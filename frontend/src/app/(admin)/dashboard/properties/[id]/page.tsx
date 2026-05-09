@@ -107,7 +107,7 @@ export default function AdminPropertyFormPage({ params }: Props) {
     return (
       <div className="flex flex-col gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--surface-1)' }} />
+          <div key={i} className="h-16 rounded-xl skeleton" style={{ background: 'var(--surface-1)' }} />
         ))}
       </div>
     )

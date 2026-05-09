@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from uuid import UUID
+from datetime import datetime
 from typing import Optional, List
 
 
@@ -44,6 +45,7 @@ class CmsStaticPageResponse(BaseModel):
     id: UUID
     slug: str
     content: str
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

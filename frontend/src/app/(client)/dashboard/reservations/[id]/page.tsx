@@ -1,9 +1,10 @@
 'use client'
 
 import useSWR from 'swr'
-import { use, useRef, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Users, CreditCard, Upload, X, FileText, CheckCircle2 } from 'lucide-react'
 import type { Reservation, PaymentMethod, BookingGuest, Paginated } from '@/types/index'
 import { apiFetch, APIError } from '@/lib/api-client'
@@ -57,7 +58,18 @@ interface Props {
 
 export default function ClientReservationDetailPage({ params }: Props) {
   const { id } = use(params)
+  const searchParams = useSearchParams()
+  const isFresh = searchParams.get('fresh') === '1'
+  const [highlightFresh, setHighlightFresh] = useState(isFresh)
   const { toast } = useToast()
+
+  // Auto-fade the "just-created" highlight after a few seconds; it's a glance,
+  // not a steady-state. The pulse animation already loops 2 cycles.
+  useEffect(() => {
+    if (!isFresh) return
+    const t = setTimeout(() => setHighlightFresh(false), 4000)
+    return () => clearTimeout(t)
+  }, [isFresh])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
@@ -157,7 +169,7 @@ export default function ClientReservationDetailPage({ params }: Props) {
     return (
       <div className="flex flex-col gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'var(--surface-1)' }} />
+          <div key={i} className="h-24 rounded-xl skeleton" style={{ background: 'var(--surface-1)' }} />
         ))}
       </div>
     )
@@ -178,10 +190,19 @@ export default function ClientReservationDetailPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Main info */}
         <div className="flex flex-col gap-5">
-          {/* Header card */}
+          {/* Header card — pulsa brevemente cuando llegamos con ?fresh=1 */}
           <div
             className="rounded-2xl p-6"
-            style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
+            style={{
+              background: 'var(--surface-1)',
+              border: highlightFresh
+                ? '1px solid rgba(232, 169, 58, 0.5)'
+                : '1px solid var(--border-soft)',
+              animation: highlightFresh
+                ? 'pulseAccent 1.4s ease-in-out 2'
+                : undefined,
+              transition: 'border-color 600ms ease-out',
+            }}
           >
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
@@ -297,7 +318,7 @@ export default function ClientReservationDetailPage({ params }: Props) {
               </h2>
               {paymentMethods === undefined ? (
                 <div
-                  className="h-20 rounded-xl animate-pulse mb-6"
+                  className="h-20 rounded-xl skeleton mb-6"
                   style={{ background: 'var(--surface-2)' }}
                 />
               ) : paymentMethods.length === 0 ? (

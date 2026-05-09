@@ -72,7 +72,7 @@ function VoucherPanel({ reservationId }: { reservationId: string }) {
   if (isLoading) {
     return (
       <div
-        className="rounded-xl mt-3 mb-1 h-32 animate-pulse"
+        className="rounded-xl mt-3 mb-1 h-32 skeleton"
         style={{ background: 'var(--surface-2)' }}
       />
     )
@@ -193,7 +193,7 @@ export default function AdminRequestsPage() {
       {isLoading && (
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 rounded-xl animate-pulse" style={{ background: 'var(--surface-1)' }} />
+            <div key={i} className="h-28 rounded-xl skeleton" style={{ background: 'var(--surface-1)' }} />
           ))}
         </div>
       )}

@@ -29,7 +29,9 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('dev:', d['scripts'].get\\('dev'\\)\\); print\\('build:', d['scripts'].get\\('build'\\)\\)\")",
       "Bash(docker volume *)",
       "Bash(docker run *)",
-      "Read(//c//**)"
+      "Read(//c//**)",
+      "PowerShell(docker exec project-frontend-1 *)",
+      "Bash(awk '{print $7}')"
     ]
   }
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
+import { UserMenu } from '@/components/user-menu'
 import {
   CalendarDays,
   Building2,
@@ -13,7 +14,6 @@ import {
   Image,
   FileText,
   Star,
-  LogOut,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -48,21 +48,24 @@ const NAV_BY_VARIANT: Record<Variant, NavItem[]> = {
 
 interface DashboardSidebarProps {
   variant: Variant
-  userEmail?: string
-  userName?: string
+  userEmail: string
+  userName: string
+  userInitials: string
+  userRoleLabel: string
+  dashboardHref: string
 }
 
-export function DashboardSidebar({ variant, userEmail, userName }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  variant,
+  userEmail,
+  userName,
+  userInitials,
+  userRoleLabel,
+  dashboardHref,
+}: DashboardSidebarProps) {
   const items = NAV_BY_VARIANT[variant]
   const pathname = usePathname()
-  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
-
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    router.push('/login')
-    router.refresh()
-  }
 
   return (
     <aside
@@ -70,8 +73,8 @@ export function DashboardSidebar({ variant, userEmail, userName }: DashboardSide
       style={{
         background: 'var(--surface-1)',
         borderRight: '1px solid var(--border-soft)',
-        width: collapsed ? '64px' : '220px',
-        minWidth: collapsed ? '64px' : '220px',
+        width: collapsed ? '64px' : '232px',
+        minWidth: collapsed ? '64px' : '232px',
       }}
     >
       {/* Logo */}
@@ -102,7 +105,7 @@ export function DashboardSidebar({ variant, userEmail, userName }: DashboardSide
               )}
               style={{
                 color: isActive ? 'var(--brand-accent)' : 'var(--text-secondary)',
-                background: isActive ? 'rgba(224, 155, 107, 0.08)' : undefined,
+                background: isActive ? 'rgba(199, 90, 58, 0.10)' : undefined,
               }}
               title={collapsed ? item.label : undefined}
             >
@@ -113,32 +116,20 @@ export function DashboardSidebar({ variant, userEmail, userName }: DashboardSide
         })}
       </nav>
 
-      {/* User + logout */}
+      {/* User menu — el mismo signature de avatar+dropdown que en el header público */}
       <div
         className="px-2 py-3"
         style={{ borderTop: '1px solid var(--border-soft)' }}
       >
-        {!collapsed && userName && (
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-medium line-clamp-1" style={{ color: 'var(--text-primary)' }}>
-              {userName}
-            </p>
-            {userEmail && (
-              <p className="text-xs line-clamp-1 mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {userEmail}
-              </p>
-            )}
-          </div>
-        )}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-100 hover:bg-[var(--surface-2)]"
-          style={{ color: 'var(--text-tertiary)' }}
-          title="Cerrar sesión"
-        >
-          <LogOut size={16} className="shrink-0" />
-          {!collapsed && 'Cerrar sesión'}
-        </button>
+        <UserMenu
+          fullName={userName}
+          email={userEmail}
+          initials={userInitials}
+          roleLabel={userRoleLabel}
+          dashboardHref={dashboardHref}
+          placement="sidebar"
+          collapsed={collapsed}
+        />
       </div>
 
       {/* Collapse toggle */}

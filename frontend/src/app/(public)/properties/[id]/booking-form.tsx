@@ -11,6 +11,16 @@ import { formatCurrency, getDaysBetween } from '@/lib/utils'
 import { AvailabilityCalendar } from '@/components/availability-calendar'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
+import { ReservationSuccessDialog } from '@/components/reservation-success-dialog'
+
+interface CreatedReservation {
+  id: string
+  check_in_date: string
+  check_out_date: string
+  num_adults: number
+  num_children: number
+  total_amount: number | string
+}
 
 const schema = z
   .object({
@@ -40,6 +50,8 @@ export function BookingForm({
   const router = useRouter()
   const { toast } = useToast()
   const [showCalendar, setShowCalendar] = useState(false)
+  const [createdReservation, setCreatedReservation] =
+    useState<CreatedReservation | null>(null)
 
   const {
     register,
@@ -96,8 +108,16 @@ export function BookingForm({
       }
 
       const reservation = await res.json()
-      toast('¡Reserva solicitada correctamente!', 'success')
-      router.push(`/dashboard/reservations/${reservation.id}`)
+      // Prefetch the detail page so navigation from the success dialog feels instant
+      router.prefetch(`/dashboard/reservations/${reservation.id}`)
+      setCreatedReservation({
+        id: reservation.id,
+        check_in_date: reservation.check_in_date,
+        check_out_date: reservation.check_out_date,
+        num_adults: reservation.num_adults,
+        num_children: reservation.num_children,
+        total_amount: reservation.total_amount,
+      })
     } catch (err) {
       toast(
         err instanceof Error ? err.message : 'Error al crear reserva',
@@ -107,6 +127,27 @@ export function BookingForm({
   }
 
   return (
+    <>
+    <ReservationSuccessDialog
+      open={createdReservation !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          // User closed the dialog without choosing — go to detail by default
+          if (createdReservation) {
+            router.push(`/dashboard/reservations/${createdReservation.id}?fresh=1`)
+          }
+          setCreatedReservation(null)
+        }
+      }}
+      reservation={
+        createdReservation
+          ? {
+              ...createdReservation,
+              property_name: property.name,
+            }
+          : null
+      }
+    />
     <div
       className="rounded-2xl p-6"
       style={{
@@ -283,5 +324,6 @@ export function BookingForm({
         </p>
       </form>
     </div>
+    </>
   )
 }

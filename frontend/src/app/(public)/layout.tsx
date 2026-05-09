@@ -1,11 +1,20 @@
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
+import { UserMenu } from '@/components/user-menu'
+import {
+  getMe,
+  dashboardHomeForRole,
+  initialsOf,
+  roleLabel,
+} from '@/lib/auth-server'
 
-export default function PublicLayout({
+export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const me = await getMe()
+
   return (
     <>
       <header
@@ -44,18 +53,38 @@ export default function PublicLayout({
             </Link>
           </div>
 
-          {/* Auth buttons */}
+          {/* Right slot — auth or user nav */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="btn-primary text-sm px-4 py-2 rounded-lg font-semibold"
-              style={{
-                background: 'var(--brand-accent)',
-                color: 'var(--color-bone, rgb(249,244,230))',
-              }}
-            >
-              Iniciar Sesión
-            </Link>
+            {me ? (
+              <UserMenu
+                fullName={me.full_name}
+                email={me.email}
+                initials={initialsOf(me.full_name)}
+                roleLabel={roleLabel(me.role)}
+                dashboardHref={dashboardHomeForRole(me.role)}
+                placement="header"
+              />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:inline-flex items-center text-sm px-3 py-2 rounded-lg font-medium transition-colors hover:bg-[var(--surface-2)]"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Iniciar sesión
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center text-sm px-4 py-2 rounded-lg font-semibold transition-colors"
+                  style={{
+                    background: 'var(--brand-accent)',
+                    color: 'var(--color-bone, rgb(249,244,230))',
+                  }}
+                >
+                  Crear cuenta
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </header>

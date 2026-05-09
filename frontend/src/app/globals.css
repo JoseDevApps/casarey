@@ -131,7 +131,9 @@
 }
 
 /* =====================================================
-   UTILITY CLASSES
+   SINGLE-PROPERTY UTILITIES
+   Equivalentes a tokens: surface-N, text-*, border-*, font-*.
+   Viven en `utilities` para integrarse con Tailwind sin colisión.
    ===================================================== */
 @layer utilities {
   .surface-0 { background: var(--surface-0); }
@@ -154,7 +156,16 @@
   .border-soft { border: 1px solid var(--border-soft); }
   .border-mid { border: 1px solid var(--border-mid); }
   .border-strong { border: 1px solid var(--border-strong); }
+}
 
+/* =====================================================
+   COMPONENT CLASSES (multi-property)
+   Viven en `components` para que cualquier utility de Tailwind
+   (px-N, py-N, pl-N, pr-N, bg-*, etc.) las sobreescriba siempre.
+   Caso típico: un input con icono necesita `pl-9` que debe ganarle
+   al `padding: 10px 14px` del .input-field.
+   ===================================================== */
+@layer components {
   .card {
     background: var(--surface-1);
     border: 1px solid var(--border-soft);
@@ -167,20 +178,22 @@
     border-radius: var(--radius-lg);
   }
 
-  /* Botón principal: terracotta sobre fondo claro = blanco/cream */
+  /* Botón principal: terracotta. Hover sube 1px (alegría tenue),
+     active baja 1px (presión sentida), focus-visible ring terra. */
   .btn-primary {
     background: var(--brand-accent);
-    color: var(--color-cream-readable, rgb(249, 244, 230));
+    color: var(--color-bone, rgb(249, 244, 230));
     font-weight: 600;
     border-radius: var(--radius-md);
     padding: 10px 20px;
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition: background 150ms ease-out, transform 120ms ease-out, box-shadow 150ms ease-out;
     cursor: pointer;
     border: none;
   }
-  .btn-primary:hover { background: var(--brand-accent-hover); }
-  .btn-primary:active { transform: translateY(1px); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:hover { background: var(--brand-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(199, 90, 58, 0.45); }
+  .btn-primary:active { transform: translateY(0); box-shadow: none; }
+  .btn-primary:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .btn-forest {
     background: var(--brand-primary);
@@ -188,23 +201,25 @@
     font-weight: 600;
     border-radius: var(--radius-md);
     padding: 10px 20px;
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition: background 150ms ease-out, transform 120ms ease-out, box-shadow 150ms ease-out;
     cursor: pointer;
     border: none;
   }
-  .btn-forest:hover { background: var(--brand-primary-hover); }
-  .btn-forest:active { transform: translateY(1px); }
+  .btn-forest:hover { background: var(--brand-primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(31, 61, 46, 0.6); }
+  .btn-forest:active { transform: translateY(0); box-shadow: none; }
+  .btn-forest:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 
   .btn-ghost {
     background: transparent;
     color: var(--text-secondary);
     border-radius: var(--radius-md);
     padding: 10px 20px;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
     cursor: pointer;
     border: 1px solid var(--border-mid);
   }
-  .btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); border-color: var(--border-strong); }
+  .btn-ghost:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 
   /* Botón "destacado" para CTAs especiales — usa el sun, alegría reservada */
   .btn-sun {
@@ -275,8 +290,72 @@
   }
 }
 
-/* Animación suave para selección de rango en el calendario */
+/* =====================================================
+   MOTION TOKENS — un único ritmo para toda la app
+   Las animaciones expresan causa-efecto, no decoran.
+   ===================================================== */
+
+/* Fade + slight scale — para selección de calendario, dropdowns, hovers */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* Slide vertical — entrada de cards, listas, modales sobre un eje */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide lateral — toasts, notificaciones que vienen de la derecha */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Highlight ring — destacar un elemento recién creado por unos segundos */
+@keyframes pulseAccent {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 169, 58, 0); }
+  50%      { box-shadow: 0 0 0 6px rgba(232, 169, 58, 0.18); }
+}
+
+/* Modal entrance — Radix Dialog */
+@keyframes dialogIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Skeleton shimmer — overlay para no chocar con el background del padre.
+   Aplicar como `className="skeleton"` en placeholders de carga.
+   El brillo cream tenue pasa de izquierda a derecha cada 1.8s. */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(244, 236, 216, 0.06) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Respect reduced motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
