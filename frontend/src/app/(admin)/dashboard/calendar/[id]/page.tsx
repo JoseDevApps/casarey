@@ -42,23 +42,57 @@ export default function AdminCalendarPage({ params }: Props) {
     .filter((e) => e.status === 'BLOCKED')
     .map((e) => e.date)
 
+  /**
+   * Expande un rango inclusivo `[start, end]` en YYYY-MM-DD a la lista de
+   * fechas que el backend espera. UTC para evitar off-by-one por zona
+   * horaria local.
+   */
+  function expandDateRange(start: string, end: string): string[] {
+    const dates: string[] = []
+    const [sy, sm, sd] = start.split('-').map(Number)
+    const [ey, em, ed] = end.split('-').map(Number)
+    const cursor = new Date(Date.UTC(sy, sm - 1, sd))
+    const last = new Date(Date.UTC(ey, em - 1, ed))
+    if (cursor > last) return []
+    while (cursor <= last) {
+      dates.push(cursor.toISOString().slice(0, 10))
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+    return dates
+  }
+
   async function handleBlock() {
     if (!blockStart) {
       toast('Selecciona al menos una fecha de inicio', 'warning')
       return
     }
+    const endDate = blockEnd || blockStart
+    if (endDate < blockStart) {
+      toast('La fecha fin debe ser igual o posterior a la fecha inicio', 'warning')
+      return
+    }
+    const dates = expandDateRange(blockStart, endDate)
+    if (dates.length === 0) {
+      toast('Rango de fechas inválido', 'warning')
+      return
+    }
+
     setBlocking(true)
     try {
       await apiFetch(`/api/properties/${id}/calendar/block`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          start_date: blockStart,
-          end_date: blockEnd || blockStart,
+          dates,
           reason: blockReason || undefined,
         }),
       })
-      toast('Fechas bloqueadas correctamente', 'success')
+      toast(
+        dates.length === 1
+          ? 'Fecha bloqueada correctamente'
+          : `${dates.length} fechas bloqueadas correctamente`,
+        'success',
+      )
       mutate()
       setBlockStart('')
       setBlockEnd('')
@@ -72,10 +106,10 @@ export default function AdminCalendarPage({ params }: Props) {
 
   async function handleUnblock(date: string) {
     try {
-      await apiFetch(`/api/properties/${id}/calendar/unblock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date }),
+      // Backend usa REST canonical: DELETE /calendar/{date} con la fecha en
+      // el path, sin body (no `POST /calendar/unblock`).
+      await apiFetch(`/api/properties/${id}/calendar/${date}`, {
+        method: 'DELETE',
       })
       toast('Fecha desbloqueada', 'success')
       mutate()

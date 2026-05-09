@@ -9,6 +9,25 @@ export class APIError extends Error {
   }
 }
 
+/**
+ * 204 No Content (DELETE típico) y 304 Not Modified no traen cuerpo.
+ * Devolver `undefined as T` evita `SyntaxError: Unexpected end of JSON input`
+ * cuando el caller no espera resultado.
+ */
+async function parseBody<T>(res: Response): Promise<T> {
+  if (res.status === 204 || res.status === 304) {
+    return undefined as T
+  }
+  // Algunos servidores devuelven 200 con body vacío; intentamos defensivo.
+  const text = await res.text()
+  if (!text) return undefined as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    return undefined as T
+  }
+}
+
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, { credentials: 'include', ...options })
 
@@ -34,7 +53,7 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
         (err as { detail?: string }).detail || 'Request failed'
       )
     }
-    return retry.json() as Promise<T>
+    return parseBody<T>(retry)
   }
 
   if (!res.ok) {
@@ -46,7 +65,7 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
     )
   }
 
-  return res.json() as Promise<T>
+  return parseBody<T>(res)
 }
 
 export function getErrorMessage(err: unknown): string {

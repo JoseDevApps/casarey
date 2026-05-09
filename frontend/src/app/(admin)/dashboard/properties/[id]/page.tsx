@@ -41,7 +41,7 @@ export default function AdminPropertyFormPage({ params }: Props) {
   const { toast } = useToast()
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
-  const { data: property, isLoading } = useSWR(
+  const { data: property, isLoading, mutate } = useSWR(
     isNew ? null : `/api/properties/${id}`,
     (url) => apiFetch<Property>(url)
   )
@@ -91,12 +91,17 @@ export default function AdminPropertyFormPage({ params }: Props) {
         toast('Propiedad creada correctamente', 'success')
         router.push(`/dashboard/properties/${newProp.id}`)
       } else {
+        // Backend usa PUT para reemplazo completo del recurso (con
+        // exclude_unset=True, así que aceptar campos parciales también).
+        // PATCH devuelve 405 — la convención del API es PUT para recursos,
+        // PATCH solo para sub-acciones específicas (approve, reject, cancel).
         await apiFetch(`/api/properties/${id}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         })
         toast('Propiedad actualizada', 'success')
+        mutate()
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al guardar', 'error')
