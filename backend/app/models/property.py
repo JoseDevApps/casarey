@@ -10,6 +10,12 @@ class CalendarStatus(str, enum.Enum):
     BLOCKED = "BLOCKED"
 
 
+class VideoStatus(str, enum.Enum):
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
 class Property(Base):
     __tablename__ = "properties"
 
@@ -25,8 +31,17 @@ class Property(Base):
     max_guests = Column(Integer, nullable=False)
     rate_adult = Column(Numeric(10, 2), nullable=False)
     rate_child = Column(Numeric(10, 2), nullable=False)
+    rate_night_1 = Column(Numeric(10, 2), nullable=False)
+    rate_night_2 = Column(Numeric(10, 2), nullable=False)
+    rate_night_3 = Column(Numeric(10, 2), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Video opcional por propiedad. Pipeline:
+    # admin sube → video_status=PROCESSING → background ffmpeg → video_status=READY
+    video_minio_key = Column(String, nullable=True)
+    video_poster_key = Column(String, nullable=True)
+    video_status = Column(Enum(VideoStatus), nullable=True)
 
 
 class PropertyImage(Base):

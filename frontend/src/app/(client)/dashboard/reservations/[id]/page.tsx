@@ -214,9 +214,16 @@ export default function ClientReservationDetailPage({ params }: Props) {
                 </h1>
                 <ReservationStatusBadge status={reservation.status} />
               </div>
-              <span className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
-                {formatCurrency(reservation.total_amount)}
-              </span>
+              <div className="text-right">
+                <span className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
+                  {formatCurrency(reservation.final_amount ?? reservation.total_amount)}
+                </span>
+                {(reservation.discount_amount ?? 0) > 0 && (
+                  <p className="text-xs mt-0.5 line-through" style={{ color: 'var(--text-muted)' }}>
+                    {formatCurrency(reservation.total_amount)}
+                  </p>
+                )}
+              </div>
             </div>
 
             <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -280,27 +287,39 @@ export default function ClientReservationDetailPage({ params }: Props) {
             >
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  Tarifa adulto (congelada)
+                  Tarifa congelada aplicada
                 </span>
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  {formatCurrency(reservation.snapshot_rate_adult)}/noche
+                  {formatCurrency(reservation.snapshot_nightly_rate)}/noche
                 </span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  Tarifa niño (congelada)
+                  Regla aplicada
                 </span>
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  {formatCurrency(reservation.snapshot_rate_child)}/noche
+                  {reservation.snapshot_pricing_tier === 1
+                    ? '1 noche'
+                    : reservation.snapshot_pricing_tier === 2
+                    ? '2 noches'
+                    : '3+ noches'}
                 </span>
               </div>
+              {(reservation.discount_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-sm pt-2">
+                  <span style={{ color: 'var(--text-secondary)' }}>Descuento</span>
+                  <span style={{ color: 'var(--color-success)' }}>
+                    -{formatCurrency(reservation.discount_amount)}
+                  </span>
+                </div>
+              )}
               <div
                 className="flex justify-between font-bold pt-2 mt-1"
                 style={{ borderTop: '1px solid var(--border-soft)', color: 'var(--text-primary)' }}
               >
-                <span>Total</span>
+                <span>{(reservation.discount_amount ?? 0) > 0 ? 'Total a pagar' : 'Total'}</span>
                 <span style={{ color: 'var(--brand-accent)' }}>
-                  {formatCurrency(reservation.total_amount)}
+                  {formatCurrency(reservation.final_amount ?? reservation.total_amount)}
                 </span>
               </div>
             </div>

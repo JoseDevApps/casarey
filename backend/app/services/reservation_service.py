@@ -22,6 +22,22 @@ VALID_TRANSITIONS: dict[ReservationStatus, list[ReservationStatus]] = {
 }
 
 
+def _resolve_pricing_tier(nights: int) -> int:
+    if nights <= 1:
+        return 1
+    if nights == 2:
+        return 2
+    return 3
+
+
+def _resolve_nightly_rate(prop: Property, pricing_tier: int) -> Decimal:
+    if pricing_tier == 1:
+        return Decimal(str(prop.rate_night_1))
+    if pricing_tier == 2:
+        return Decimal(str(prop.rate_night_2))
+    return Decimal(str(prop.rate_night_3))
+
+
 async def create_reservation(
     db: AsyncSession,
     property_id: str,
@@ -70,10 +86,9 @@ async def create_reservation(
 
     # Calculate total with frozen prices
     nights = (check_out_date - check_in_date).days
-    total = (
-        Decimal(str(prop.rate_adult)) * num_adults
-        + Decimal(str(prop.rate_child)) * num_children
-    ) * nights
+    pricing_tier = _resolve_pricing_tier(nights)
+    nightly_rate = _resolve_nightly_rate(prop, pricing_tier)
+    total = nightly_rate * nights
 
     reservation = Reservation(
         property_id=property_id,
@@ -82,8 +97,10 @@ async def create_reservation(
         check_out_date=check_out,
         num_adults=num_adults,
         num_children=num_children,
-        snapshot_rate_adult=prop.rate_adult,
-        snapshot_rate_child=prop.rate_child,
+        snapshot_rate_adult=nightly_rate,
+        snapshot_rate_child=Decimal(0),
+        snapshot_nightly_rate=nightly_rate,
+        snapshot_pricing_tier=pricing_tier,
         total_amount=total,
     )
     db.add(reservation)
@@ -95,6 +112,7 @@ async def transition_reservation(
     db: AsyncSession,
     reservation: Reservation,
     new_status: ReservationStatus,
+    discount_amount: Decimal = Decimal(0),
 ) -> Reservation:
     """Validates and applies a state transition. Caller is responsible for committing."""
     allowed = VALID_TRANSITIONS.get(reservation.status, [])
@@ -107,6 +125,26 @@ async def transition_reservation(
             },
         )
     reservation.status = new_status
+
+    if new_status == ReservationStatus.APPROVED_WAITING_PAYMENT:
+        if discount_amount < 0:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "detail": "El descuento no puede ser negativo",
+                    "code": "INVALID_DISCOUNT",
+                },
+            )
+        if discount_amount > reservation.total_amount:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "detail": "El descuento no puede exceder el total",
+                    "code": "INVALID_DISCOUNT",
+                },
+            )
+        reservation.discount_amount = discount_amount
+
     return reservation
 
 

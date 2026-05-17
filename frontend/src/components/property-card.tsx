@@ -62,13 +62,13 @@ export function PropertyCard({ property }: PropertyCardProps) {
             className="text-sm mt-1"
             style={{ color: 'var(--text-tertiary)' }}
           >
-            <span>Adulto: </span>
+            <span>1 noche: </span>
             <span style={{ color: 'var(--brand-accent)' }} className="font-medium">
-              {formatCurrency(property.rate_adult)}
+              {formatCurrency(property.rate_night_1)}
             </span>
-            <span> &bull; Niño: </span>
+            <span> &bull; 3+ noches: </span>
             <span style={{ color: 'var(--brand-accent)' }} className="font-medium">
-              {formatCurrency(property.rate_child)}
+              {formatCurrency(property.rate_night_3)}
             </span>
             <span> / noche</span>
           </div>

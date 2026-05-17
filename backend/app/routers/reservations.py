@@ -14,6 +14,7 @@ from app.schemas.reservation import (
     ReservationResponse,
     ReservationListResponse,
     ReservationPropertySummary,
+    ApproveRequest,
     BookingGuestCreate,
     BookingGuestResponse,
     GuestListResponse,
@@ -165,12 +166,14 @@ async def get_reservation(
 @router.patch("/{reservation_id}/approve", response_model=ReservationResponse)
 async def approve_reservation(
     reservation_id: UUID,
+    body: ApproveRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
 ):
     reservation = await _get_reservation_for_admin(reservation_id, current_user, db)
     await reservation_service.transition_reservation(
-        db, reservation, ReservationStatus.APPROVED_WAITING_PAYMENT
+        db, reservation, ReservationStatus.APPROVED_WAITING_PAYMENT,
+        discount_amount=body.discount_amount,
     )
     await db.commit()
     await db.refresh(reservation)

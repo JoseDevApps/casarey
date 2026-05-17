@@ -1,9 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 from app.models.reservation import ReservationStatus
+
+
+class ApproveRequest(BaseModel):
+    discount_amount: Decimal = Decimal(0)
 
 
 class ReservationCreate(BaseModel):
@@ -34,13 +38,20 @@ class ReservationResponse(BaseModel):
     num_children: int
     snapshot_rate_adult: Decimal
     snapshot_rate_child: Decimal
+    snapshot_nightly_rate: Decimal
+    snapshot_pricing_tier: int
     total_amount: Decimal
+    discount_amount: Decimal = Decimal(0)
     status: ReservationStatus
     created_at: datetime
     updated_at: datetime
     property: Optional[ReservationPropertySummary] = None
 
     model_config = {"from_attributes": True}
+
+    @computed_field
+    def final_amount(self) -> Decimal:
+        return self.total_amount - self.discount_amount
 
 
 class ReservationListResponse(BaseModel):

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { FileUploader } from '@/components/file-uploader'
+import { PropertyVideoUploader } from '@/components/property-video-uploader'
 import { useToast } from '@/components/ui/toast'
 
 const schema = z.object({
@@ -23,8 +24,9 @@ const schema = z.object({
   checkin_time: z.string().min(1, 'Hora de check-in requerida'),
   checkout_time: z.string().min(1, 'Hora de check-out requerida'),
   max_guests: z.coerce.number().min(1).max(100),
-  rate_adult: z.coerce.number().min(0),
-  rate_child: z.coerce.number().min(0),
+  rate_night_1: z.coerce.number().min(0),
+  rate_night_2: z.coerce.number().min(0),
+  rate_night_3: z.coerce.number().min(0),
   is_active: z.boolean(),
 })
 
@@ -58,8 +60,9 @@ export default function AdminPropertyFormPage({ params }: Props) {
       checkin_time: '14:00',
       checkout_time: '11:00',
       max_guests: 6,
-      rate_adult: 0,
-      rate_child: 0,
+      rate_night_1: 0,
+      rate_night_2: 0,
+      rate_night_3: 0,
       is_active: true,
     },
   })
@@ -73,8 +76,9 @@ export default function AdminPropertyFormPage({ params }: Props) {
         checkin_time: property.checkin_time,
         checkout_time: property.checkout_time,
         max_guests: property.max_guests,
-        rate_adult: property.rate_adult,
-        rate_child: property.rate_child,
+        rate_night_1: property.rate_night_1,
+        rate_night_2: property.rate_night_2,
+        rate_night_3: property.rate_night_3,
         is_active: property.is_active,
       })
     }
@@ -209,24 +213,33 @@ export default function AdminPropertyFormPage({ params }: Props) {
             Tarifas por noche
           </h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
-              id="rate_adult"
-              label="Adulto (Bs)"
+              id="rate_night_1"
+              label="Noche 1 (Bs)"
               type="number"
               step="0.01"
               min={0}
-              error={errors.rate_adult?.message}
-              {...register('rate_adult')}
+              error={errors.rate_night_1?.message}
+              {...register('rate_night_1')}
             />
             <Input
-              id="rate_child"
-              label="Niño (Bs)"
+              id="rate_night_2"
+              label="Noche 2 (Bs)"
               type="number"
               step="0.01"
               min={0}
-              error={errors.rate_child?.message}
-              {...register('rate_child')}
+              error={errors.rate_night_2?.message}
+              {...register('rate_night_2')}
+            />
+            <Input
+              id="rate_night_3"
+              label="Noche 3+ (Bs)"
+              type="number"
+              step="0.01"
+              min={0}
+              error={errors.rate_night_3?.message}
+              {...register('rate_night_3')}
             />
           </div>
         </div>
@@ -299,6 +312,21 @@ export default function AdminPropertyFormPage({ params }: Props) {
           </Link>
         </div>
       </form>
+
+      {/* El video solo aplica a propiedades ya creadas (necesita el id
+          real para que el endpoint del backend escriba en MinIO bajo
+          properties/{id}/...). En "Nueva Propiedad" se oculta. */}
+      {!isNew && property && (
+        <div className="max-w-2xl mt-6">
+          <PropertyVideoUploader
+            propertyId={property.id}
+            videoStatus={property.video_status}
+            videoMinioKey={property.video_minio_key}
+            videoPosterKey={property.video_poster_key}
+            onChange={() => mutate()}
+          />
+        </div>
+      )}
     </div>
   )
 }

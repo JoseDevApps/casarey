@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { Clock, Users, MapPin } from 'lucide-react'
+import { Clock, Users, MapPin, Film } from 'lucide-react'
 import type { Property, CalendarEntry } from '@/types/index'
 import { formatCurrency, getImageUrl } from '@/lib/utils'
 import { BookingForm } from './booking-form'
@@ -177,27 +177,67 @@ export default async function PropertyDetailPage({ params }: Props) {
               className="text-base font-semibold mb-4"
               style={{ color: 'var(--text-primary)' }}
             >
-              Tarifas por noche
+              Tarifas por tramo de noches
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Adultos
+                  Estancia de 1 noche
                 </p>
                 <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
-                  {formatCurrency(property.rate_adult)}
+                  {formatCurrency(property.rate_night_1)}
                 </p>
               </div>
               <div>
                 <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Niños
+                  Estancia de 2 noches
                 </p>
                 <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
-                  {formatCurrency(property.rate_child)}
+                  {formatCurrency(property.rate_night_2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  Estancia de 3+ noches
+                </p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
+                  {formatCurrency(property.rate_night_3)}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Video — solo si está READY. preload="metadata" baja sólo la
+              cabecera (~30 KB); el clip completo se descarga cuando el
+              visitante pulse play. Cero data quemada hasta que la pidan. */}
+          {property.video_status === 'READY' && property.video_minio_key && (
+            <div className="mb-8">
+              <h2
+                className="text-lg font-semibold mb-3 flex items-center gap-2"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Film size={16} style={{ color: 'var(--brand-accent)' }} />
+                Recorrido en video
+              </h2>
+              <div
+                className="relative w-full rounded-2xl overflow-hidden ring-1 ring-[var(--border-soft)]"
+                style={{ aspectRatio: '16/9', background: 'var(--surface-2)' }}
+              >
+                <video
+                  controls
+                  preload="metadata"
+                  playsInline
+                  poster={
+                    property.video_poster_key
+                      ? getImageUrl(property.video_poster_key, 'property-videos')
+                      : undefined
+                  }
+                  src={getImageUrl(property.video_minio_key, 'property-videos')}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Calendar section */}
           <div className="mb-4">

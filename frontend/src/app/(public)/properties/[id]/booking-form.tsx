@@ -66,20 +66,22 @@ export function BookingForm({
 
   const checkIn = watch('check_in_date')
   const checkOut = watch('check_out_date')
-  const numAdults = watch('num_adults')
-  const numChildren = watch('num_children')
 
   const nights =
     checkIn && checkOut && checkOut > checkIn
       ? getDaysBetween(checkIn, checkOut)
       : 0
 
-  const total =
-    nights > 0
-      ? nights *
-        (numAdults * Number(property.rate_adult) +
-          (numChildren || 0) * Number(property.rate_child))
-      : 0
+  const nightlyRate =
+    nights <= 0
+      ? 0
+      : nights === 1
+      ? Number(property.rate_night_1)
+      : nights === 2
+      ? Number(property.rate_night_2)
+      : Number(property.rate_night_3)
+
+  const total = nights > 0 ? nights * nightlyRate : 0
 
   function handleDateRangeSelect(start: string, end: string | null) {
     setValue('check_in_date', start, { shouldValidate: true })
@@ -268,22 +270,20 @@ export function BookingForm({
           >
             <div className="flex justify-between text-sm mb-2">
               <span style={{ color: 'var(--text-secondary)' }}>
-                {numAdults} adulto{numAdults !== 1 ? 's' : ''} × {nights} noche{nights !== 1 ? 's' : ''}
+                Estancia ({nights} noche{nights !== 1 ? 's' : ''})
               </span>
               <span style={{ color: 'var(--text-secondary)' }}>
-                {formatCurrency(numAdults * Number(property.rate_adult) * nights)}
+                {nights === 1
+                  ? 'Tarifa Noche 1'
+                  : nights === 2
+                  ? 'Tarifa Noche 2'
+                  : 'Tarifa Noche 3+'}
               </span>
             </div>
-            {Number(numChildren) > 0 && (
-              <div className="flex justify-between text-sm mb-2">
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {numChildren} niño{Number(numChildren) !== 1 ? 's' : ''} × {nights} noche{nights !== 1 ? 's' : ''}
-                </span>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {formatCurrency(Number(numChildren) * Number(property.rate_child) * nights)}
-                </span>
-              </div>
-            )}
+            <div className="flex justify-between text-sm mb-2">
+              <span style={{ color: 'var(--text-secondary)' }}>Precio por noche aplicado</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(nightlyRate)}</span>
+            </div>
             <div
               className="flex justify-between font-bold text-base pt-3 mt-1"
               style={{

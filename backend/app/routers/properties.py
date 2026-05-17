@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
@@ -7,7 +7,7 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
-from app.models.property import Property, PropertyImage
+from app.models.property import Property, PropertyImage, VideoStatus
 from app.schemas.property import (
     PropertyCreate,
     PropertyUpdate,
@@ -16,12 +16,18 @@ from app.schemas.property import (
     PropertyImageResponse,
 )
 from app.dependencies import get_current_user, require_role
-from app.services import storage_service
+from app.services import storage_service, video_service
 
 router = APIRouter()
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 8 * 1024 * 1024  # 8 MB
+
+# Video upload limits — origen crudo del celular puede ser grande, pero
+# 100 MB es el techo: arriba de eso ffmpeg en una VPS modesta puede tardar
+# 5+ minutos y bloquear nuevos uploads.
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/webm", "video/x-matroska"}
+MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
 def _build_property_response(prop: Property, images: list[PropertyImage]) -> PropertyResponse:
@@ -93,8 +99,11 @@ async def create_property(
         checkin_time=body.checkin_time,
         checkout_time=body.checkout_time,
         max_guests=body.max_guests,
-        rate_adult=body.rate_adult,
-        rate_child=body.rate_child,
+        rate_adult=body.rate_night_1,
+        rate_child=0,
+        rate_night_1=body.rate_night_1,
+        rate_night_2=body.rate_night_2,
+        rate_night_3=body.rate_night_3,
     )
     db.add(prop)
     await db.flush()
@@ -157,6 +166,10 @@ async def update_property(
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(prop, field, value)
+
+    if any(key in update_data for key in ("rate_night_1", "rate_night_2", "rate_night_3")):
+        prop.rate_adult = prop.rate_night_1
+        prop.rate_child = 0
 
     await db.commit()
     await db.refresh(prop)
@@ -249,3 +262,134 @@ async def upload_property_image(
         sort_order=image.sort_order,
         url=url,
     )
+
+
+# ─────────────────────────  VIDEO  ─────────────────────────
+
+async def _get_property_for_owner(
+    property_id: UUID, current_user: User, db: AsyncSession
+) -> Property:
+    """Fetches a property and asserts the caller may modify it."""
+    result = await db.execute(select(Property).where(Property.id == property_id))
+    prop = result.scalar_one_or_none()
+    if not prop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"detail": "Propiedad no encontrada", "code": "PROPERTY_NOT_FOUND"},
+        )
+    if current_user.role == UserRole.ADMIN and str(prop.owner_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"detail": "No tienes permiso para esta propiedad", "code": "FORBIDDEN"},
+        )
+    return prop
+
+
+@router.post(
+    "/{property_id}/video",
+    response_model=PropertyResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def upload_property_video(
+    property_id: UUID,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+):
+    """Uploads a raw video and queues it for transcoding.
+
+    Returns immediately with `video_status=PROCESSING`. The frontend should
+    poll `GET /properties/{id}` until the status flips to `READY` (typically
+    a few seconds for short clips, up to a minute for ~50 MB phone-shot
+    originals)."""
+    prop = await _get_property_for_owner(property_id, current_user, db)
+
+    if file.content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "detail": "Tipo de video no permitido (mp4, mov, webm, mkv)",
+                "code": "INVALID_FILE_TYPE",
+            },
+        )
+
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_VIDEO_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "detail": "El video excede 100 MB. Comprime el video antes de subirlo.",
+                "code": "FILE_TOO_LARGE",
+            },
+        )
+
+    # Eliminar artefactos del video anterior (si existían) para no acumular
+    # basura en MinIO.
+    for old_key in (prop.video_minio_key, prop.video_poster_key):
+        if old_key:
+            storage_service.delete_file(storage_service.BUCKET_PROPERTY_VIDEOS, old_key)
+
+    # Subir el original crudo a un bucket privado de staging. La key incluye
+    # un UUID para que dos uploads simultáneos no se pisen.
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
+    raw_key = f"raw/{property_id}/{uuid.uuid4()}.{ext}"
+    storage_service.upload_file(
+        storage_service.BUCKET_PROPERTY_VIDEOS_RAW,
+        raw_key,
+        file_bytes,
+        file.content_type,
+    )
+
+    # Marcar el property como PROCESSING. Los keys se setearán cuando la
+    # background task termine (READY) o se quedará así si falla (FAILED).
+    prop.video_status = VideoStatus.PROCESSING
+    prop.video_minio_key = None
+    prop.video_poster_key = None
+    await db.commit()
+    await db.refresh(prop)
+
+    # Encola la transcodificación. FastAPI la ejecuta DESPUÉS de devolver
+    # la respuesta — el admin no espera 30s mirando un spinner.
+    background_tasks.add_task(
+        video_service.transcode_property_video, property_id, raw_key
+    )
+
+    img_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id == property_id)
+        .order_by(PropertyImage.sort_order)
+    )
+    images = img_result.scalars().all()
+    return _build_property_response(prop, images)
+
+
+@router.delete(
+    "/{property_id}/video",
+    response_model=PropertyResponse,
+)
+async def delete_property_video(
+    property_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+):
+    """Removes the video and its poster, freeing the bucket entries."""
+    prop = await _get_property_for_owner(property_id, current_user, db)
+
+    for old_key in (prop.video_minio_key, prop.video_poster_key):
+        if old_key:
+            storage_service.delete_file(storage_service.BUCKET_PROPERTY_VIDEOS, old_key)
+
+    prop.video_minio_key = None
+    prop.video_poster_key = None
+    prop.video_status = None
+    await db.commit()
+    await db.refresh(prop)
+
+    img_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id == property_id)
+        .order_by(PropertyImage.sort_order)
+    )
+    images = img_result.scalars().all()
+    return _build_property_response(prop, images)

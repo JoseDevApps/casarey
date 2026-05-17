@@ -121,6 +121,7 @@ function VoucherPanel({ reservationId }: { reservationId: string }) {
 export default function AdminRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'ALL'>('ALL')
   const [expandedGuests, setExpandedGuests] = useState<Set<string>>(new Set())
+  const [discounts, setDiscounts] = useState<Record<string, string>>({})
   const { toast } = useToast()
 
   const queryParam = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
@@ -129,7 +130,13 @@ export default function AdminRequestsPage() {
 
   async function handleApprove(id: string) {
     try {
-      await apiFetch(`/api/reservations/${id}/approve`, { method: 'PATCH' })
+      const discountStr = discounts[id]?.trim() || '0'
+      const discount_amount = Math.max(0, parseFloat(discountStr) || 0)
+      await apiFetch(`/api/reservations/${id}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discount_amount }),
+      })
       toast('Reserva aprobada', 'success')
       mutate()
     } catch (err) {
@@ -231,7 +238,14 @@ export default function AdminRequestsPage() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-bold" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(res.total_amount)}</p>
+                  <p className="text-lg font-bold" style={{ color: 'var(--brand-accent)' }}>
+                    {res.discount_amount > 0 ? formatCurrency(res.final_amount) : formatCurrency(res.total_amount)}
+                  </p>
+                  {res.discount_amount > 0 && (
+                    <p className="text-xs mt-0.5 line-through" style={{ color: 'var(--text-muted)' }}>
+                      {formatCurrency(res.total_amount)}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -239,9 +253,38 @@ export default function AdminRequestsPage() {
                 <VoucherPanel reservationId={res.id} />
               )}
 
-              <div className="flex flex-wrap gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-soft)' }}>
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 items-end" style={{ borderTop: '1px solid var(--border-soft)' }}>
                 {res.status === 'PENDING_APPROVAL' && (
                   <>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                        Descuento (Bs)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="0"
+                          className="input-field w-24 text-sm"
+                          value={discounts[res.id] ?? ''}
+                          onChange={(e) =>
+                            setDiscounts((prev) => ({ ...prev, [res.id]: e.target.value }))
+                          }
+                        />
+                        {(() => {
+                          const d = parseFloat(discounts[res.id]) || 0
+                          if (d > 0) {
+                            return (
+                              <span className="text-xs font-medium" style={{ color: 'var(--color-success)' }}>
+                                → {formatCurrency(Math.max(0, Number(res.total_amount) - d))}
+                              </span>
+                            )
+                          }
+                          return null
+                        })()}
+                      </div>
+                    </div>
                     <Button variant="forest" size="sm" onClick={() => handleApprove(res.id)}>
                       <CheckCircle2 size={14} /> Aprobar
                     </Button>

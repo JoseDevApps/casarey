@@ -37,9 +37,15 @@ export interface Property {
   max_guests: number
   rate_adult: number
   rate_child: number
+  rate_night_1: number
+  rate_night_2: number
+  rate_night_3: number
   is_active: boolean
   images: PropertyImage[]
   created_at: string
+  video_status?: 'PROCESSING' | 'READY' | 'FAILED' | null
+  video_minio_key?: string | null
+  video_poster_key?: string | null
 }
 
 export interface PropertyImage {
@@ -72,7 +78,11 @@ export interface Reservation {
   num_children: number
   snapshot_rate_adult: number
   snapshot_rate_child: number
+  snapshot_nightly_rate: number
+  snapshot_pricing_tier: number
   total_amount: number
+  discount_amount: number
+  final_amount: number
   status: ReservationStatus
   created_at: string
   updated_at?: string

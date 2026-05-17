@@ -238,12 +238,12 @@ export default async function LandingPage() {
                         style={{ borderTop: '1px solid var(--border-soft)' }}
                       >
                         <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                          <span>Adulto: </span>
+                          <span>Desde 1 noche: </span>
                           <span
                             className="font-semibold"
                             style={{ color: 'var(--brand-accent)' }}
                           >
-                            {formatCurrency(property.rate_adult)}
+                            {formatCurrency(property.rate_night_1)}
                           </span>
                           <span style={{ color: 'var(--text-muted)' }}> / noche</span>
                         </div>

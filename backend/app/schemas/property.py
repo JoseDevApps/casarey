@@ -14,8 +14,11 @@ class PropertyCreate(BaseModel):
     checkin_time: time
     checkout_time: time
     max_guests: int
-    rate_adult: Decimal
-    rate_child: Decimal
+    rate_adult: Decimal = Decimal(0)
+    rate_child: Decimal = Decimal(0)
+    rate_night_1: Decimal
+    rate_night_2: Decimal
+    rate_night_3: Decimal
     image_keys: List[str] = []
 
 
@@ -30,6 +33,9 @@ class PropertyUpdate(BaseModel):
     max_guests: Optional[int] = None
     rate_adult: Optional[Decimal] = None
     rate_child: Optional[Decimal] = None
+    rate_night_1: Optional[Decimal] = None
+    rate_night_2: Optional[Decimal] = None
+    rate_night_3: Optional[Decimal] = None
     is_active: Optional[bool] = None
 
 
@@ -56,9 +62,17 @@ class PropertyResponse(BaseModel):
     max_guests: int
     rate_adult: Decimal
     rate_child: Decimal
+    rate_night_1: Decimal
+    rate_night_2: Decimal
+    rate_night_3: Decimal
     is_active: bool
     created_at: datetime
     images: List[PropertyImageResponse] = []
+    # Video opcional. `video_status` puede ser PROCESSING / READY / FAILED.
+    # Solo cuando es READY las keys están seteadas.
+    video_status: Optional[str] = None
+    video_minio_key: Optional[str] = None
+    video_poster_key: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
