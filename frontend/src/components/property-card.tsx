@@ -66,6 +66,10 @@ export function PropertyCard({ property }: PropertyCardProps) {
             <span style={{ color: 'var(--brand-accent)' }} className="font-medium">
               {formatCurrency(property.rate_night_1)}
             </span>
+            <span> &bull; Niño: </span>
+            <span style={{ color: 'var(--brand-accent)' }} className="font-medium">
+              {formatCurrency(property.rate_child)}
+            </span>
             <span> &bull; 3+ noches: </span>
             <span style={{ color: 'var(--brand-accent)' }} className="font-medium">
               {formatCurrency(property.rate_night_3)}

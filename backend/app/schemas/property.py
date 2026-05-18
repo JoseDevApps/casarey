@@ -49,6 +49,10 @@ class PropertyImageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PropertyImageReorderRequest(BaseModel):
+    image_ids: List[UUID]
+
+
 class PropertyResponse(BaseModel):
     id: UUID
     owner_id: UUID

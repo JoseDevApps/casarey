@@ -88,7 +88,11 @@ async def create_reservation(
     nights = (check_out_date - check_in_date).days
     pricing_tier = _resolve_pricing_tier(nights)
     nightly_rate = _resolve_nightly_rate(prop, pricing_tier)
-    total = nightly_rate * nights
+    child_rate = Decimal(str(prop.rate_child))
+    total = nights * (
+        nightly_rate * Decimal(num_adults)
+        + child_rate * Decimal(num_children)
+    )
 
     reservation = Reservation(
         property_id=property_id,
@@ -98,7 +102,7 @@ async def create_reservation(
         num_adults=num_adults,
         num_children=num_children,
         snapshot_rate_adult=nightly_rate,
-        snapshot_rate_child=Decimal(0),
+        snapshot_rate_child=child_rate,
         snapshot_nightly_rate=nightly_rate,
         snapshot_pricing_tier=pricing_tier,
         total_amount=total,

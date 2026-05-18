@@ -305,6 +305,14 @@ export default function ClientReservationDetailPage({ params }: Props) {
                     : '3+ noches'}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Tarifa niño (congelada)
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {formatCurrency(reservation.snapshot_rate_child)}/noche
+                </span>
+              </div>
               {(reservation.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm pt-2">
                   <span style={{ color: 'var(--text-secondary)' }}>Descuento</span>

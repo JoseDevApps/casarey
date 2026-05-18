@@ -157,9 +157,18 @@
   .border-mid { border: 1px solid var(--border-mid); }
   .border-strong { border: 1px solid var(--border-strong); }
 }
-
+ 
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;            /* Chrome, Safari and Opera */
+}
+ 
 /* =====================================================
-   COMPONENT CLASSES (multi-property)
+    COMPONENT CLASSES (multi-property)
+
    Viven en `components` para que cualquier utility de Tailwind
    (px-N, py-N, pl-N, pr-N, bg-*, etc.) las sobreescriba siempre.
    Caso típico: un input con icono necesita `pl-9` que debe ganarle

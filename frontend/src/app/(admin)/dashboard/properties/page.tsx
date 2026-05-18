@@ -65,10 +65,11 @@ export default function AdminPropertiesPage() {
         >
           {/* Table header */}
           <div
-            className="grid grid-cols-[1fr_120px_120px_120px_100px_100px] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider"
+            className="grid grid-cols-[1fr_100px_110px_110px_110px_100px_100px] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider"
             style={{ borderBottom: '1px solid var(--border-soft)', color: 'var(--text-muted)' }}
           >
             <span>Propiedad</span>
+            <span>Niño</span>
             <span>Noche 1</span>
             <span>Noche 2</span>
             <span>Noche 3+</span>
@@ -79,7 +80,7 @@ export default function AdminPropertiesPage() {
           {properties.map((property, idx) => (
             <div
               key={property.id}
-              className="grid grid-cols-[1fr_120px_120px_120px_100px_100px] gap-4 px-5 py-4 items-center text-sm"
+              className="grid grid-cols-[1fr_100px_110px_110px_110px_100px_100px] gap-4 px-5 py-4 items-center text-sm"
               style={{
                 borderBottom: idx < properties.length - 1 ? '1px solid var(--border-soft)' : 'none',
               }}
@@ -97,6 +98,7 @@ export default function AdminPropertiesPage() {
                   <Users size={11} /> Máx. {property.max_guests}
                 </p>
               </div>
+              <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(property.rate_child)}</span>
               <span style={{ color: 'var(--brand-accent)' }}>{formatCurrency(property.rate_night_1)}</span>
               <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(property.rate_night_2)}</span>
               <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(property.rate_night_3)}</span>

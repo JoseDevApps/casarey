@@ -66,6 +66,8 @@ export function BookingForm({
 
   const checkIn = watch('check_in_date')
   const checkOut = watch('check_out_date')
+  const numAdults = watch('num_adults')
+  const numChildren = watch('num_children')
 
   const nights =
     checkIn && checkOut && checkOut > checkIn
@@ -81,7 +83,10 @@ export function BookingForm({
       ? Number(property.rate_night_2)
       : Number(property.rate_night_3)
 
-  const total = nights > 0 ? nights * nightlyRate : 0
+  const childRate = Number(property.rate_child)
+  const adultsSubtotal = nights > 0 ? nights * numAdults * nightlyRate : 0
+  const childrenSubtotal = nights > 0 ? nights * Number(numChildren || 0) * childRate : 0
+  const total = adultsSubtotal + childrenSubtotal
 
   function handleDateRangeSelect(start: string, end: string | null) {
     setValue('check_in_date', start, { shouldValidate: true })
@@ -134,10 +139,6 @@ export function BookingForm({
       open={createdReservation !== null}
       onOpenChange={(open) => {
         if (!open) {
-          // User closed the dialog without choosing — go to detail by default
-          if (createdReservation) {
-            router.push(`/dashboard/reservations/${createdReservation.id}?fresh=1`)
-          }
           setCreatedReservation(null)
         }
       }}
@@ -270,19 +271,31 @@ export function BookingForm({
           >
             <div className="flex justify-between text-sm mb-2">
               <span style={{ color: 'var(--text-secondary)' }}>
-                Estancia ({nights} noche{nights !== 1 ? 's' : ''})
+                {numAdults} adulto{numAdults !== 1 ? 's' : ''} × {nights} noche{nights !== 1 ? 's' : ''}
               </span>
               <span style={{ color: 'var(--text-secondary)' }}>
-                {nights === 1
-                  ? 'Tarifa Noche 1'
-                  : nights === 2
-                  ? 'Tarifa Noche 2'
-                  : 'Tarifa Noche 3+'}
+                {formatCurrency(adultsSubtotal)}
               </span>
             </div>
             <div className="flex justify-between text-sm mb-2">
-              <span style={{ color: 'var(--text-secondary)' }}>Precio por noche aplicado</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(nightlyRate)}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                Tarifa adulto aplicada ({nights === 1 ? 'Noche 1' : nights === 2 ? 'Noche 2' : 'Noche 3+'})
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(nightlyRate)}/noche</span>
+            </div>
+            {Number(numChildren) > 0 && (
+              <div className="flex justify-between text-sm mb-2">
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {numChildren} niño{Number(numChildren) !== 1 ? 's' : ''} × {nights} noche{nights !== 1 ? 's' : ''}
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {formatCurrency(childrenSubtotal)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm mb-2">
+              <span style={{ color: 'var(--text-secondary)' }}>Tarifa niño</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(childRate)}/noche</span>
             </div>
             <div
               className="flex justify-between font-bold text-base pt-3 mt-1"

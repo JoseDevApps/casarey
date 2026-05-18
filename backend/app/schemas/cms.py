@@ -3,6 +3,10 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
 
+from app.schemas.property import PropertyResponse
+
+from app.schemas.property import PropertyResponse
+
 
 class CmsBannerCreate(BaseModel):
     title: str
@@ -62,6 +66,11 @@ class CmsFeaturedPropertyResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CmsFeaturedWithPropertyResponse(BaseModel):
+    property: PropertyResponse
+    sort_order: int
+
+
 class CmsFeaturedListResponse(BaseModel):
-    items: List[CmsFeaturedPropertyResponse]
+    items: List[CmsFeaturedWithPropertyResponse]
     total: int

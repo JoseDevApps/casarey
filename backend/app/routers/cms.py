@@ -7,6 +7,7 @@ from uuid import UUID
 from app.core.database import get_db
 from app.models.user import User, UserRole
 from app.models.cms import CmsBanner, CmsStaticPage, CmsFeaturedProperty
+from app.models.property import Property, PropertyImage
 from app.schemas.cms import (
     CmsBannerCreate,
     CmsBannerUpdate,
@@ -17,8 +18,10 @@ from app.schemas.cms import (
     CmsFeaturedPropertyCreate,
     CmsFeaturedPropertyResponse,
     CmsFeaturedListResponse,
+    CmsFeaturedWithPropertyResponse,
 )
 from app.dependencies import require_role
+from app.routers.properties import _build_property_response
 from app.services import storage_service
 
 router = APIRouter()
@@ -195,11 +198,34 @@ async def upsert_page(
 
 @router.get("/featured", response_model=CmsFeaturedListResponse)
 async def list_featured(db: AsyncSession = Depends(get_db)):
+    # Get featured properties with their property data
     result = await db.execute(
-        select(CmsFeaturedProperty).order_by(CmsFeaturedProperty.sort_order)
+        select(CmsFeaturedProperty, Property)
+        .join(Property, CmsFeaturedProperty.property_id == Property.id)
+        .order_by(CmsFeaturedProperty.sort_order)
     )
-    featured = result.scalars().all()
-    return CmsFeaturedListResponse(items=list(featured), total=len(featured))
+    rows = result.all()
+
+    # Load images for all featured properties
+    property_ids = [prop.id for _, prop in rows]
+    images_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id.in_(property_ids))
+        .order_by(PropertyImage.sort_order)
+    )
+    all_images = images_result.scalars().all()
+    images_by_property: dict[UUID, list[PropertyImage]] = {}
+    for img in all_images:
+        images_by_property.setdefault(img.property_id, []).append(img)
+
+    items = [
+        CmsFeaturedWithPropertyResponse(
+            property=_build_property_response(prop, images_by_property.get(prop.id, [])),
+            sort_order=fp.sort_order,
+        )
+        for fp, prop in rows
+    ]
+    return CmsFeaturedListResponse(items=items, total=len(items))
 
 
 @router.post("/featured", response_model=CmsFeaturedPropertyResponse, status_code=status.HTTP_201_CREATED)

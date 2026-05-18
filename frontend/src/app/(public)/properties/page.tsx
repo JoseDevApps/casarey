@@ -1,5 +1,5 @@
 import type { Property } from '@/types/index'
-import { PropertyCard } from '@/components/property-card'
+import { PropertiesClient } from '@/components/properties-client'
 
 async function getProperties(): Promise<Property[]> {
   try {
@@ -39,28 +39,7 @@ export default async function PropertiesPage() {
         </h1>
       </div>
 
-      {properties.length === 0 ? (
-        <div
-          className="text-center py-20 rounded-xl"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--border-soft)',
-          }}
-        >
-          <p className="text-lg font-medium" style={{ color: 'var(--text-secondary)' }}>
-            No hay propiedades disponibles en este momento.
-          </p>
-          <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
-            Vuelve pronto para ver nuevas opciones.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {properties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
-          ))}
-        </div>
-      )}
+      <PropertiesClient properties={properties} />
     </div>
   )
 }

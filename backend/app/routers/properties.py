@@ -14,6 +14,7 @@ from app.schemas.property import (
     PropertyResponse,
     PropertyListResponse,
     PropertyImageResponse,
+    PropertyImageReorderRequest,
 )
 from app.dependencies import get_current_user, require_role
 from app.services import storage_service, video_service
@@ -100,7 +101,7 @@ async def create_property(
         checkout_time=body.checkout_time,
         max_guests=body.max_guests,
         rate_adult=body.rate_night_1,
-        rate_child=0,
+        rate_child=body.rate_child,
         rate_night_1=body.rate_night_1,
         rate_night_2=body.rate_night_2,
         rate_night_3=body.rate_night_3,
@@ -169,7 +170,6 @@ async def update_property(
 
     if any(key in update_data for key in ("rate_night_1", "rate_night_2", "rate_night_3")):
         prop.rate_adult = prop.rate_night_1
-        prop.rate_child = 0
 
     await db.commit()
     await db.refresh(prop)
@@ -262,6 +262,88 @@ async def upload_property_image(
         sort_order=image.sort_order,
         url=url,
     )
+
+
+@router.delete("/{property_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_property_image(
+    property_id: UUID,
+    image_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+):
+    await _get_property_for_owner(property_id, current_user, db)
+
+    image_result = await db.execute(
+        select(PropertyImage).where(
+            PropertyImage.id == image_id,
+            PropertyImage.property_id == property_id,
+        )
+    )
+    image = image_result.scalar_one_or_none()
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"detail": "Imagen no encontrada", "code": "IMAGE_NOT_FOUND"},
+        )
+
+    storage_service.delete_file(storage_service.BUCKET_PROPERTY_IMAGES, image.minio_key)
+    await db.delete(image)
+    await db.commit()
+
+
+@router.patch("/{property_id}/images/reorder", response_model=list[PropertyImageResponse])
+async def reorder_property_images(
+    property_id: UUID,
+    body: PropertyImageReorderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+):
+    await _get_property_for_owner(property_id, current_user, db)
+
+    if len(set(body.image_ids)) != len(body.image_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"detail": "Hay imágenes repetidas en el orden", "code": "INVALID_IMAGE_ORDER"},
+        )
+
+    images_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id == property_id)
+        .order_by(PropertyImage.sort_order)
+    )
+    images = images_result.scalars().all()
+
+    existing_ids = {img.id for img in images}
+    requested_ids = set(body.image_ids)
+    if existing_ids != requested_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"detail": "Debes enviar todas las imágenes de la propiedad", "code": "INVALID_IMAGE_ORDER"},
+        )
+
+    image_by_id = {img.id: img for img in images}
+    for idx, image_id in enumerate(body.image_ids):
+        image_by_id[image_id].sort_order = idx
+
+    await db.commit()
+
+    refreshed_result = await db.execute(
+        select(PropertyImage)
+        .where(PropertyImage.property_id == property_id)
+        .order_by(PropertyImage.sort_order)
+    )
+    refreshed_images = refreshed_result.scalars().all()
+
+    return [
+        PropertyImageResponse(
+            id=img.id,
+            property_id=img.property_id,
+            minio_key=img.minio_key,
+            sort_order=img.sort_order,
+            url=storage_service.get_public_url(storage_service.BUCKET_PROPERTY_IMAGES, img.minio_key),
+        )
+        for img in refreshed_images
+    ]
 
 
 # ─────────────────────────  VIDEO  ─────────────────────────

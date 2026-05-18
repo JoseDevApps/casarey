@@ -4,11 +4,13 @@ from botocore.exceptions import ClientError
 from app.core.config import settings
 
 BUCKET_PROPERTY_IMAGES = "property-images"
+BUCKET_PROPERTY_VIDEOS = "property-videos"
+BUCKET_PROPERTY_VIDEOS_RAW = "property-videos-raw"
 BUCKET_PAYMENT_METHODS = "payment-methods"
 BUCKET_PAYMENT_VOUCHERS = "payment-vouchers"
 
-PUBLIC_BUCKETS = {BUCKET_PROPERTY_IMAGES, BUCKET_PAYMENT_METHODS}
-PRIVATE_BUCKETS = {BUCKET_PAYMENT_VOUCHERS}
+PUBLIC_BUCKETS = {BUCKET_PROPERTY_IMAGES, BUCKET_PROPERTY_VIDEOS, BUCKET_PAYMENT_METHODS}
+PRIVATE_BUCKETS = {BUCKET_PROPERTY_VIDEOS_RAW, BUCKET_PAYMENT_VOUCHERS}
 
 
 def _get_client():
@@ -27,7 +29,13 @@ def ensure_buckets():
     """Creates required buckets on startup if they don't exist."""
     client = _get_client()
 
-    all_buckets = [BUCKET_PROPERTY_IMAGES, BUCKET_PAYMENT_METHODS, BUCKET_PAYMENT_VOUCHERS]
+    all_buckets = [
+        BUCKET_PROPERTY_IMAGES,
+        BUCKET_PROPERTY_VIDEOS,
+        BUCKET_PROPERTY_VIDEOS_RAW,
+        BUCKET_PAYMENT_METHODS,
+        BUCKET_PAYMENT_VOUCHERS,
+    ]
     for bucket in all_buckets:
         try:
             client.head_bucket(Bucket=bucket)

@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import { Clock, Users, MapPin, Film } from 'lucide-react'
 import type { Property, CalendarEntry } from '@/types/index'
 import { formatCurrency, getImageUrl } from '@/lib/utils'
 import { BookingForm } from './booking-form'
+import { PropertyImageCarousel } from '@/components/property-image-carousel'
 
 async function getProperty(id: string): Promise<Property | null> {
   try {
@@ -60,50 +60,11 @@ export default async function PropertyDetailPage({ params }: Props) {
     .filter((e) => e.status === 'BLOCKED')
     .map((e) => e.date)
 
-  const sortedImages = [...(property.images || [])].sort(
-    (a, b) => a.sort_order - b.sort_order
-  )
-  const mainImage = sortedImages[0]
-  const restImages = sortedImages.slice(1, 5)
-
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-      {/* Image gallery */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-8 rounded-2xl overflow-hidden">
-        <div className="relative col-span-2 row-span-2" style={{ aspectRatio: '16/9' }}>
-          {mainImage ? (
-            <Image
-              src={getImageUrl(mainImage.minio_key)}
-              alt={property.name}
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 66vw"
-              className="object-cover"
-            />
-          ) : (
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ background: 'var(--surface-2)' }}
-            >
-              <span style={{ color: 'var(--text-muted)' }}>Sin imagen</span>
-            </div>
-          )}
-        </div>
-        {restImages.map((img) => (
-          <div key={img.id} className="relative" style={{ aspectRatio: '4/3' }}>
-            <Image
-              src={getImageUrl(img.minio_key)}
-              alt={`${property.name} - imagen`}
-              fill
-              sizes="(max-width: 768px) 50vw, 20vw"
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </div>
+      <PropertyImageCarousel images={property.images || []} propertyName={property.name} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
-        {/* Left column */}
+      <div className="flex flex-col gap-10">
         <div>
           <h1
             className="text-3xl sm:text-4xl font-bold mb-3"
@@ -111,6 +72,7 @@ export default async function PropertyDetailPage({ params }: Props) {
           >
             {property.name}
           </h1>
+
 
           {property.address && (
             <div
@@ -161,13 +123,21 @@ export default async function PropertyDetailPage({ params }: Props) {
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {property.description}
-              </p>
+               </p>
+             </div>
+            )}
+ 
+            <div className="mb-8 max-w-2xl">
+              <BookingForm
+                property={property}
+                occupiedDates={occupiedDates}
+                blockedDates={blockedDates}
+              />
             </div>
-          )}
-
-          {/* Rates */}
-          <div
-            className="rounded-xl p-5 mb-8"
+ 
+            {/* Rates */}
+            <div
+             className="rounded-xl p-5 mb-8"
             style={{
               background: 'var(--surface-1)',
               border: '1px solid var(--border-soft)',
@@ -179,7 +149,15 @@ export default async function PropertyDetailPage({ params }: Props) {
             >
               Tarifas por tramo de noches
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  Niño (cualquier tramo)
+                </p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>
+                  {formatCurrency(property.rate_child)}
+                </p>
+              </div>
               <div>
                 <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
                   Estancia de 1 noche
@@ -238,28 +216,6 @@ export default async function PropertyDetailPage({ params }: Props) {
               </div>
             </div>
           )}
-
-          {/* Calendar section */}
-          <div className="mb-4">
-            <h2
-              className="text-lg font-semibold mb-1"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              Disponibilidad
-            </h2>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Selecciona las fechas de tu estadía directamente en el formulario.
-            </p>
-          </div>
-        </div>
-
-        {/* Booking form (right column) */}
-        <div className="lg:sticky lg:top-24 self-start">
-          <BookingForm
-            property={property}
-            occupiedDates={occupiedDates}
-            blockedDates={blockedDates}
-          />
         </div>
       </div>
     </div>
