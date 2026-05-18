@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg \
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends --fix-missing curl ffmpeg \
+    || (sleep 5 && apt-get update --fix-missing && \
+        apt-get install -y --no-install-recommends --fix-missing curl ffmpeg) \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system appgroup \
     && useradd --system --gid appgroup --no-create-home appuser
