@@ -36,6 +36,22 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    access_token: Optional[str] = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    if not access_token:
+        return None
+    payload = verify_token(access_token)
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    result = await db.execute(
+        select(User).where(User.id == UUID(user_id), User.is_active == True)
+    )
+    return result.scalar_one_or_none()
+
+
 def require_role(*roles: UserRole):
     async def check_role(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in roles:

@@ -16,7 +16,7 @@ from app.schemas.property import (
     PropertyImageResponse,
     PropertyImageReorderRequest,
 )
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, get_current_user_optional, require_role
 from app.services import storage_service, video_service
 
 router = APIRouter()
@@ -54,17 +54,26 @@ async def list_properties(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     offset = (page - 1) * page_size
 
+    # Base condition: only active properties for anonymous users
+    conditions = [Property.is_active == True]
+
+    # ADMINs only see their own properties
+    if current_user and current_user.role == UserRole.ADMIN:
+        conditions.append(Property.owner_id == current_user.id)
+    # SUPER_ADMIN sees all active (no extra filter)
+
     count_result = await db.execute(
-        select(func.count()).select_from(Property).where(Property.is_active == True)
+        select(func.count()).select_from(Property).where(*conditions)
     )
     total = count_result.scalar_one()
 
     result = await db.execute(
         select(Property)
-        .where(Property.is_active == True)
+        .where(*conditions)
         .order_by(Property.created_at.desc())
         .offset(offset)
         .limit(page_size)
