@@ -29,6 +29,8 @@ async def create_or_promote(email: str, password: str, full_name: str) -> None:
             existing.password_hash = hash_password(password)
             existing.full_name = full_name
             existing.is_active = True
+            existing.email_verified = True
+            existing.must_change_password = False
             await db.commit()
             print(f"OK  {email} promovido a SUPER_ADMIN (contraseña actualizada)")
             return
@@ -39,6 +41,8 @@ async def create_or_promote(email: str, password: str, full_name: str) -> None:
             full_name=full_name,
             role=UserRole.SUPER_ADMIN,
             is_active=True,
+            email_verified=True,
+            must_change_password=False,
         )
         db.add(user)
         await db.commit()
