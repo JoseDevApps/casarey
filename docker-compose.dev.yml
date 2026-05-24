@@ -9,9 +9,10 @@ services:
       - /app/.next
     environment:
       BACKEND_URL: http://backend:8000
+      HOSTNAME: 0.0.0.0
       NEXTAUTH_SECRET: dev_secret_change_in_prod
-      NEXTAUTH_URL: http://localhost:3100
-      NEXT_PUBLIC_MINIO_URL: http://localhost:9100
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3100}"
+      NEXT_PUBLIC_MINIO_URL: "${NEXT_PUBLIC_MINIO_URL:-http://localhost:9100}"
       NODE_ENV: development
 
   backend:
@@ -30,8 +31,24 @@ services:
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
       REFRESH_TOKEN_EXPIRE_DAYS: 30
-      CORS_ORIGINS: http://localhost:3100
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3100}"
       DEBUG: "true"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3100}"
+      EMAIL_VERIFICATION_EXPIRE_HOURS: "${EMAIL_VERIFICATION_EXPIRE_HOURS}"
+      PASSWORD_RESET_EXPIRE_MINUTES: "${PASSWORD_RESET_EXPIRE_MINUTES}"
+      SMTP_HOST: "${SMTP_HOST}"
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USERNAME: "${SMTP_USERNAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      SMTP_ENCRYPTION: "${SMTP_ENCRYPTION}"
+      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
+      TRUSTED_HOSTS: "${TRUSTED_HOSTS:-localhost,127.0.0.1,backend}"
+      SECURITY_HEADERS_ENABLED: "${SECURITY_HEADERS_ENABLED:-true}"
+      HSTS_ENABLED: "${HSTS_ENABLED:-false}"
+      HSTS_MAX_AGE: "${HSTS_MAX_AGE:-31536000}"
 
   minio:
     ports:

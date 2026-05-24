@@ -2,6 +2,10 @@
 .env
 .env.local
 .env.*.local
+.envrc
+.env.production
+.env.staging
+.env.test
 
 # Dependencies
 node_modules/
@@ -40,3 +44,14 @@ backend/alembic/versions/*.pyc
 
 # Superpowers (brainstorming artifacts)
 .superpowers/
+
+# Local agent artifacts
+.agents/
+AGENTS.md
+
+# Secrets / keys
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/

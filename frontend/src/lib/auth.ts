@@ -11,6 +11,8 @@ export interface MeResponse {
   phone?: string | null
   role: 'CLIENT' | 'ADMIN' | 'SUPER_ADMIN'
   is_active: boolean
+  email_verified: boolean
+  must_change_password: boolean
   created_at: string
 }
 

@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -19,19 +20,35 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    video_status_enum = sa.Enum('PROCESSING', 'READY', 'FAILED', name='videostatus')
-    video_status_enum.create(op.get_bind(), checkfirst=True)
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    if "properties" not in inspector.get_table_names():
+        return
 
-    op.add_column('properties', sa.Column('video_minio_key', sa.String(), nullable=True))
-    op.add_column('properties', sa.Column('video_poster_key', sa.String(), nullable=True))
-    op.add_column(
-        'properties',
-        sa.Column('video_status', video_status_enum, nullable=True),
-    )
+    existing_columns = {c["name"] for c in inspector.get_columns("properties")}
+    video_status_enum = sa.Enum('PROCESSING', 'READY', 'FAILED', name='videostatus')
+    video_status_enum.create(bind, checkfirst=True)
+
+    if "video_minio_key" not in existing_columns:
+        op.add_column('properties', sa.Column('video_minio_key', sa.String(), nullable=True))
+    if "video_poster_key" not in existing_columns:
+        op.add_column('properties', sa.Column('video_poster_key', sa.String(), nullable=True))
+    if "video_status" not in existing_columns:
+        op.add_column(
+            'properties',
+            sa.Column('video_status', video_status_enum, nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column('properties', 'video_status')
-    op.drop_column('properties', 'video_poster_key')
-    op.drop_column('properties', 'video_minio_key')
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    if "properties" in inspector.get_table_names():
+        existing_columns = {c["name"] for c in inspector.get_columns("properties")}
+        if "video_status" in existing_columns:
+            op.drop_column('properties', 'video_status')
+        if "video_poster_key" in existing_columns:
+            op.drop_column('properties', 'video_poster_key')
+        if "video_minio_key" in existing_columns:
+            op.drop_column('properties', 'video_minio_key')
     sa.Enum(name='videostatus').drop(op.get_bind(), checkfirst=True)

@@ -1,15 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ElementType } from 'react'
 import useSWR from 'swr'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import * as Dialog from '@radix-ui/react-dialog'
 import {
   ShieldAlert,
   ShieldCheck,
   User as UserIcon,
+  UserCheck,
+  UserX,
   Search,
   ChevronDown,
   Check,
+  KeyRound,
+  X,
   Users as UsersIcon,
 } from 'lucide-react'
 import type { User as UserType, UserRole } from '@/types/index'
@@ -25,6 +30,10 @@ interface UserListResponse {
   page_size: number
 }
 
+interface PasswordResetResponse {
+  revoked_sessions: number
+}
+
 function fetcher(url: string) {
   return apiFetch<UserListResponse>(url)
 }
@@ -35,7 +44,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
 }
 
-const ROLE_ICON: Record<UserRole, React.ElementType> = {
+const ROLE_ICON: Record<UserRole, ElementType> = {
   CLIENT: UserIcon,
   ADMIN: ShieldCheck,
   SUPER_ADMIN: ShieldAlert,
@@ -54,7 +63,20 @@ const FILTERS: { value: UserRole | 'ALL'; label: string }[] = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
 ]
 
+const STATUS_FILTERS: { value: 'ALL' | 'ACTIVE' | 'INACTIVE'; label: string }[] = [
+  { value: 'ALL', label: 'Todos los estados' },
+  { value: 'ACTIVE', label: 'Activas' },
+  { value: 'INACTIVE', label: 'Inactivas' },
+]
+
 const PROMOTABLE_ROLES: UserRole[] = ['CLIENT', 'ADMIN']
+
+function validateTemporaryPassword(password: string): string | null {
+  if (password.length < 8) return 'La contraseña temporal debe tener al menos 8 caracteres'
+  if (!/[A-Z]/.test(password)) return 'La contraseña temporal debe incluir al menos una mayúscula'
+  if (!/[0-9]/.test(password)) return 'La contraseña temporal debe incluir al menos un número'
+  return null
+}
 
 export default function UsersPage() {
   const { data: resp, error, isLoading, mutate } = useSWR(
@@ -63,7 +85,12 @@ export default function UsersPage() {
   )
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [filter, setFilter] = useState<UserRole | 'ALL'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [query, setQuery] = useState('')
+  const [resetTarget, setResetTarget] = useState<UserType | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetReason, setResetReason] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
   const { toast } = useToast()
 
   const items = resp?.items ?? []
@@ -72,13 +99,15 @@ export default function UsersPage() {
     const q = query.trim().toLowerCase()
     return items.filter((u) => {
       if (filter !== 'ALL' && u.role !== filter) return false
+      if (statusFilter === 'ACTIVE' && !u.is_active) return false
+      if (statusFilter === 'INACTIVE' && u.is_active) return false
       if (!q) return true
       return (
         u.full_name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q)
       )
     })
-  }, [items, filter, query])
+  }, [items, filter, statusFilter, query])
 
   const counts = useMemo(() => {
     const acc: Record<UserRole | 'ALL', number> = {
@@ -90,6 +119,42 @@ export default function UsersPage() {
     for (const u of items) acc[u.role]++
     return acc
   }, [items])
+
+  const statusCounts = useMemo(() => {
+    return {
+      active: items.filter((u) => u.is_active).length,
+      inactive: items.filter((u) => !u.is_active).length,
+    }
+  }, [items])
+
+  async function handleStatusChange(user: UserType, nextIsActive: boolean) {
+    if (!nextIsActive) {
+      const confirmed = window.confirm(
+        `¿Deshabilitar la cuenta de ${user.full_name}? Se cerrarán sus sesiones activas.`,
+      )
+      if (!confirmed) return
+    }
+
+    setLoadingId(user.id)
+    try {
+      await apiFetch(`/api/users/${user.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: nextIsActive }),
+      })
+      toast(
+        nextIsActive
+          ? `Cuenta habilitada para ${user.full_name}`
+          : `Cuenta deshabilitada para ${user.full_name}`,
+        'success',
+      )
+      mutate()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al actualizar el estado de la cuenta', 'error')
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   async function handleRoleChange(userId: string, newRole: UserRole) {
     setLoadingId(userId)
@@ -108,8 +173,60 @@ export default function UsersPage() {
     }
   }
 
+  function openPasswordReset(user: UserType) {
+    setResetTarget(user)
+    setResetPassword('')
+    setResetReason('')
+  }
+
+  function closePasswordReset(force = false) {
+    if (resetLoading && !force) return
+    setResetTarget(null)
+    setResetPassword('')
+    setResetReason('')
+  }
+
+  async function handlePasswordReset() {
+    if (!resetTarget) return
+
+    const passwordError = validateTemporaryPassword(resetPassword)
+    if (passwordError) {
+      toast(passwordError, 'warning')
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      const result = await apiFetch<PasswordResetResponse>(`/api/users/${resetTarget.id}/password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_password: resetPassword,
+          reason: resetReason.trim() || null,
+        }),
+      })
+
+      toast(
+        `Contraseña restablecida para ${resetTarget.full_name}. Sesiones cerradas: ${result.revoked_sessions}`,
+        'success',
+      )
+      closePasswordReset(true)
+      mutate()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'No se pudo restablecer la contraseña', 'error')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   return (
-    <div>
+    <Dialog.Root
+      open={Boolean(resetTarget)}
+      onOpenChange={(open) => {
+        if (!open) closePasswordReset()
+      }}
+    >
+      <div>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1
@@ -127,11 +244,18 @@ export default function UsersPage() {
                 <span style={{ color: 'var(--text-primary)' }}>{counts.ALL}</span>
                 {' '}
                 personas registradas — {counts.CLIENT} clientes, {counts.ADMIN}{' '}
-                administradores, {counts.SUPER_ADMIN} super admin
+                administradores, {counts.SUPER_ADMIN} super admin.
+                {' '}Activas: {statusCounts.active}, inactivas: {statusCounts.inactive}
               </>
             ) : (
-              'Gestiona roles y permisos'
+              'Gestiona roles, estado de cuenta y restablecimiento de contraseñas'
             )}
+          </p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+            El botón <strong>Habilitar/Deshabilitar</strong> aparece en usuarios CLIENTE y ADMIN.
+            {' '}
+            El botón <strong>Restablecer</strong> aparece en usuarios CLIENTE y ADMIN.
+            {' '}Las cuentas SUPER_ADMIN se cambian desde su propia sesión.
           </p>
         </div>
       </div>
@@ -167,6 +291,38 @@ export default function UsersPage() {
           })}
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((f) => {
+            const isActive = statusFilter === f.value
+            const count =
+              f.value === 'ALL'
+                ? counts.ALL
+                : f.value === 'ACTIVE'
+                  ? statusCounts.active
+                  : statusCounts.inactive
+            return (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className="text-sm px-3 py-1.5 rounded-full font-medium transition-all duration-150 inline-flex items-center gap-2"
+                style={{
+                  background: isActive ? 'var(--surface-3)' : 'var(--surface-2)',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  border: `1px solid ${isActive ? 'var(--border-mid)' : 'var(--border-soft)'}`,
+                }}
+              >
+                {f.label}
+                <span
+                  className="font-mono text-[10px] tabular-nums"
+                  style={{ color: isActive ? 'var(--brand-accent)' : 'var(--text-muted)' }}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search
             size={14}
@@ -181,6 +337,20 @@ export default function UsersPage() {
             style={{ paddingTop: 8, paddingBottom: 8 }}
           />
         </div>
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors hover:bg-[var(--surface-3)]"
+            style={{
+              background: 'var(--surface-2)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-soft)',
+            }}
+          >
+            Limpiar búsqueda
+          </button>
+        )}
       </div>
 
       {/* States */}
@@ -229,8 +399,10 @@ export default function UsersPage() {
           subtitle={
             query
               ? `Intentamos con "${query}". Prueba con otro nombre o email.`
-              : `Sin resultados con el filtro "${
+              : `Sin resultados con los filtros "${
                   FILTERS.find((f) => f.value === filter)?.label
+                }" y "${
+                  STATUS_FILTERS.find((f) => f.value === statusFilter)?.label
                 }".`
           }
         />
@@ -251,7 +423,9 @@ export default function UsersPage() {
               return (
                 <li
                   key={u.id}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--surface-2)]"
+                  className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--surface-2)] ${
+                    !u.is_active ? 'opacity-75' : ''
+                  }`}
                   style={{
                     borderBottom: isLast ? 'none' : '1px solid var(--border-soft)',
                   }}
@@ -289,6 +463,22 @@ export default function UsersPage() {
                     >
                       {u.email}
                     </p>
+                    {!u.is_active && (
+                      <p
+                        className="text-[11px] font-medium mt-1"
+                        style={{ color: 'var(--color-error)' }}
+                      >
+                        Cuenta deshabilitada
+                      </p>
+                    )}
+                    {u.must_change_password && (
+                      <p
+                        className="text-[11px] font-medium mt-1"
+                        style={{ color: 'var(--brand-warm)' }}
+                      >
+                        Cambio de contraseña pendiente
+                      </p>
+                    )}
                   </div>
 
                   {/* Role chip */}
@@ -315,6 +505,19 @@ export default function UsersPage() {
                     {ROLE_LABELS[u.role]}
                   </span>
 
+                  <span
+                    className="hidden sm:inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
+                    style={{
+                      background: u.is_active ? 'rgba(91, 138, 71, 0.16)' : 'rgba(217, 99, 78, 0.16)',
+                      color: u.is_active ? 'var(--brand-primary)' : 'var(--color-error)',
+                      border: `1px solid ${
+                        u.is_active ? 'rgba(91, 138, 71, 0.28)' : 'rgba(217, 99, 78, 0.28)'
+                      }`,
+                    }}
+                  >
+                    {u.is_active ? 'Activa' : 'Inactiva'}
+                  </span>
+
                   {/* Joined date */}
                   <span
                     className="hidden md:block font-mono text-[11px] tabular-nums shrink-0"
@@ -323,28 +526,157 @@ export default function UsersPage() {
                     {formatDate(u.created_at)}
                   </span>
 
-                  {/* Role change menu */}
-                  {u.role === 'SUPER_ADMIN' ? (
-                    <span
-                      className="text-xs font-mono shrink-0"
-                      style={{ color: 'var(--text-muted)' }}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    {u.role !== 'SUPER_ADMIN' && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(u, !u.is_active)}
+                        disabled={loadingId === u.id || resetLoading}
+                        className="text-xs px-2.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        title={u.is_active ? 'Deshabilitar cuenta' : 'Habilitar cuenta'}
+                        style={{
+                          background: u.is_active ? 'rgba(217, 99, 78, 0.12)' : 'rgba(91, 138, 71, 0.16)',
+                          color: u.is_active ? 'var(--color-error)' : 'var(--brand-primary)',
+                          border: `1px solid ${
+                            u.is_active ? 'rgba(217, 99, 78, 0.28)' : 'rgba(91, 138, 71, 0.28)'
+                          }`,
+                        }}
+                      >
+                        {u.is_active ? <UserX size={12} /> : <UserCheck size={12} />}
+                        {u.is_active ? 'Deshabilitar' : 'Habilitar'}
+                      </button>
+                    )}
+                    {u.role !== 'SUPER_ADMIN' && (
+                      <RoleMenu
+                        currentRole={u.role}
+                        disabled={loadingId === u.id || resetLoading}
+                        onChange={(role) => handleRoleChange(u.id, role)}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openPasswordReset(u)}
+                      disabled={u.role === 'SUPER_ADMIN' || loadingId === u.id || resetLoading}
+                      className="text-xs px-2.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors hover:bg-[var(--surface-3)] disabled:opacity-60 disabled:cursor-not-allowed"
+                      title={
+                        u.role === 'SUPER_ADMIN'
+                          ? 'Por seguridad, la contraseña del SUPER_ADMIN se cambia desde su sesión'
+                          : 'Restablecer contraseña temporal'
+                      }
+                      style={{
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-soft)',
+                      }}
                     >
-                      —
-                    </span>
-                  ) : (
-                    <RoleMenu
-                      currentRole={u.role}
-                      disabled={loadingId === u.id}
-                      onChange={(role) => handleRoleChange(u.id, role)}
-                    />
-                  )}
+                      <KeyRound
+                        size={12}
+                        style={{ color: u.role === 'SUPER_ADMIN' ? 'var(--text-muted)' : 'var(--brand-accent)' }}
+                      />
+                      {u.role === 'SUPER_ADMIN' ? 'Protegido' : 'Restablecer'}
+                    </button>
+                  </div>
                 </li>
               )
             })}
           </ul>
         </div>
       )}
-    </div>
+      </div>
+
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className="fixed inset-0 z-[60] backdrop-blur-sm data-[state=open]:animate-[fadeIn_180ms_ease-out]"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+        />
+        <Dialog.Content
+          className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 w-[min(92vw,540px)] rounded-2xl p-6 outline-none data-[state=open]:animate-[fadeIn_180ms_ease-out]"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--border-mid)',
+          }}
+        >
+          <Dialog.Title className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Restablecer contraseña
+          </Dialog.Title>
+          <Dialog.Description className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
+            Define una contraseña temporal para{' '}
+            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+              {resetTarget?.full_name}
+            </span>
+            . Al guardar, se cerrarán todas sus sesiones activas y deberá cambiarla al iniciar sesión.
+          </Dialog.Description>
+
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="reset-password"
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Contraseña temporal
+              </label>
+              <input
+                id="reset-password"
+                type="password"
+                className="input-field"
+                placeholder="Ejemplo: Temp2026"
+                value={resetPassword}
+                onChange={(event) => setResetPassword(event.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="reset-reason"
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Motivo (opcional)
+              </label>
+              <textarea
+                id="reset-reason"
+                rows={3}
+                className="input-field resize-y"
+                placeholder="Ejemplo: Solicitud del usuario por olvido"
+                value={resetReason}
+                onChange={(event) => setResetReason(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => closePasswordReset()}
+              disabled={resetLoading}
+              className="btn-ghost text-sm px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={resetLoading}
+              className="btn-primary text-sm px-4 py-2 rounded-lg disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {resetLoading ? 'Restableciendo…' : 'Restablecer contraseña'}
+            </button>
+          </div>
+
+          <Dialog.Close
+            onClick={() => closePasswordReset()}
+            disabled={resetLoading}
+            className="absolute top-3 right-3 p-1.5 rounded-md transition-colors hover:bg-[var(--surface-2)] disabled:opacity-50"
+            aria-label="Cerrar"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <X size={16} />
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 

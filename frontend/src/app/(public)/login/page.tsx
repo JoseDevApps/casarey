@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -22,17 +22,40 @@ export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendFeedback, setResendFeedback] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
+  const [shouldShowVerifyHint, setShouldShowVerifyHint] = useState(false)
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
   })
 
+  const currentEmail = watch('email')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const verifyHint = params.get('verify') === '1'
+    const email = params.get('email') ?? ''
+    setShouldShowVerifyHint(verifyHint)
+    if (email) {
+      setValue('email', email)
+    }
+  }, [setValue])
+
   async function onSubmit(data: FormValues) {
     setServerError(null)
+    setNeedsVerification(false)
+    setResendFeedback(null)
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -42,16 +65,25 @@ export default function LoginPage() {
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
+        const err = await res.json().catch(() => ({} as { detail?: string; code?: string }))
         setServerError(
           (err as { detail?: string }).detail || 'Credenciales inválidas'
         )
+        setNeedsVerification((err as { code?: string }).code === 'EMAIL_NOT_VERIFIED')
         return
       }
+
+      setNeedsVerification(false)
+      setResendFeedback(null)
 
       // TokenResponse has no role — fetch profile to get it
       const meRes = await fetch('/api/auth/me', { credentials: 'include' })
       const user = await meRes.json()
+      if (user.must_change_password) {
+        router.push('/change-password')
+        router.refresh()
+        return
+      }
       if (user.role === 'SUPER_ADMIN') {
         router.push('/dashboard/users')
       } else if (user.role === 'ADMIN') {
@@ -62,6 +94,49 @@ export default function LoginPage() {
       router.refresh()
     } catch {
       setServerError('Error de conexión. Intenta de nuevo.')
+    }
+  }
+
+  async function handleResendVerification() {
+    setResendFeedback(null)
+
+    if (!currentEmail) {
+      setResendFeedback({
+        type: 'error',
+        message: 'Ingresa tu correo electrónico para reenviar la verificación.',
+      })
+      return
+    }
+
+    setResendLoading(true)
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: currentEmail }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as { detail?: string }))
+        setResendFeedback({
+          type: 'error',
+          message: err.detail || 'No pudimos reenviar el correo de verificación.',
+        })
+        return
+      }
+
+      setResendFeedback({
+        type: 'success',
+        message: 'Te enviamos un nuevo correo de verificación. Revisa tu bandeja.',
+      })
+    } catch {
+      setResendFeedback({
+        type: 'error',
+        message: 'Error de conexión al reenviar verificación.',
+      })
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -96,6 +171,19 @@ export default function LoginPage() {
             Ingresa a tu cuenta para gestionar reservas
           </p>
 
+          {shouldShowVerifyHint && (
+            <div
+              className="rounded-lg px-4 py-3 mb-4 text-sm"
+              style={{
+                background: 'rgba(232, 169, 58, 0.12)',
+                border: '1px solid rgba(232, 169, 58, 0.3)',
+                color: 'var(--brand-warm)',
+              }}
+            >
+              Registro exitoso. Verifica tu correo antes de iniciar sesión.
+            </div>
+          )}
+
           {serverError && (
             <div
               className="rounded-lg px-4 py-3 mb-5 text-sm"
@@ -106,6 +194,41 @@ export default function LoginPage() {
               }}
             >
               {serverError}
+            </div>
+          )}
+
+          {needsVerification && (
+            <div
+              className="rounded-lg px-4 py-3 mb-5 text-sm"
+              style={{
+                background: 'rgba(140, 180, 200, 0.12)',
+                border: '1px solid rgba(140, 180, 200, 0.3)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <p>Tu cuenta todavía no está verificada.</p>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="mt-2 underline disabled:opacity-60"
+                style={{ color: 'var(--brand-accent)' }}
+              >
+                {resendLoading ? 'Reenviando…' : 'Reenviar correo de verificación'}
+              </button>
+              {resendFeedback && (
+                <p
+                  className="mt-2"
+                  style={{
+                    color:
+                      resendFeedback.type === 'success'
+                        ? 'var(--color-success)'
+                        : 'var(--color-error)',
+                  }}
+                >
+                  {resendFeedback.message}
+                </p>
+              )}
             </div>
           )}
 
@@ -152,6 +275,16 @@ export default function LoginPage() {
                   {errors.password.message}
                 </p>
               )}
+            </div>
+
+            <div className="text-right -mt-1">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium transition-opacity hover:opacity-80"
+                style={{ color: 'var(--brand-accent)' }}
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
             <Button

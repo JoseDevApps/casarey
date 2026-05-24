@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Cookie
+from fastapi import Depends, HTTPException, status, Cookie, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -9,6 +9,7 @@ from uuid import UUID
 
 
 async def get_current_user(
+    request: Request,
     access_token: Optional[str] = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -33,6 +34,18 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"detail": "Usuario no encontrado", "code": "USER_NOT_FOUND"},
         )
+
+    if request is not None and user.must_change_password:
+        # Permit only the minimal auth flows needed to complete password change.
+        allowed_paths = {"/auth/me", "/auth/change-password", "/auth/logout", "/auth/refresh"}
+        if request.url.path not in allowed_paths:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "detail": "Debes cambiar tu contraseña temporal antes de continuar",
+                    "code": "PASSWORD_CHANGE_REQUIRED",
+                },
+            )
     return user
 
 

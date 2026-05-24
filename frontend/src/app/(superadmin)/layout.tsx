@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic'
 export default async function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getMe()
   if (!user) redirect('/login')
+  if (user.must_change_password) redirect('/change-password')
   if (user.role !== 'SUPER_ADMIN') {
     if (user.role === 'ADMIN') redirect('/dashboard/properties')
     redirect('/dashboard/reservations')

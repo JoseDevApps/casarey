@@ -63,7 +63,7 @@ export default function RegisterPage() {
         return
       }
 
-      router.push('/login?registered=1')
+      router.push(`/login?verify=1&email=${encodeURIComponent(payload.email)}`)
     } catch {
       setServerError('Error de conexión. Intenta de nuevo.')
     }

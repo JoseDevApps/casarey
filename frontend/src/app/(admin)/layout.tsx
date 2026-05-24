@@ -17,6 +17,7 @@ export default async function AdminLayout({
 }) {
   const user = await getMe()
   if (!user) redirect('/login')
+  if (user.must_change_password) redirect('/change-password')
   if (user.role === 'CLIENT') redirect('/dashboard/reservations')
   if (user.role === 'SUPER_ADMIN') redirect('/dashboard/users')
 

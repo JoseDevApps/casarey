@@ -1,0 +1,58 @@
+#!/usr/bin/env sh
+set -eu
+
+zero_sha="0000000000000000000000000000000000000000"
+failed=0
+
+tmp_added="$(mktemp)"
+trap 'rm -f "$tmp_added"' EXIT
+
+fail() {
+  printf "%s\n" "$1" >&2
+  failed=1
+}
+
+check_range() {
+  range="$1"
+
+  changed_files="$(git diff --name-only "$range" || true)"
+
+  if printf "%s\n" "$changed_files" | grep -E '(^|/)\.env($|\.|_)' | grep -Ev '(^|/)\.env\.example$' >/dev/null 2>&1; then
+    fail "Blocked push: detected .env-like file in commits being pushed."
+  fi
+
+  if printf "%s\n" "$changed_files" | grep -E '\.(pem|key|p12|pfx)$' >/dev/null 2>&1; then
+    fail "Blocked push: detected private key/certificate file extension in commits being pushed."
+  fi
+
+  git diff -U0 "$range" | sed -n '/^+/p' | sed '/^+++/d' > "$tmp_added" || true
+
+  if [ ! -s "$tmp_added" ]; then
+    return
+  fi
+
+  if grep -E '(-----BEGIN (RSA|EC|DSA|OPENSSH|PRIVATE) KEY-----|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]+)' "$tmp_added" >/dev/null 2>&1; then
+    fail "Blocked push: detected high-risk secret pattern in added lines."
+  fi
+
+  if grep -Ei '(smtp_password|jwt_secret|nextauth_secret|db_password|minio_password)[[:space:]]*[:=]' "$tmp_added" | \
+    grep -Eiv '(change_in_production|example|placeholder|your_|\$\{|<|xxx)' >/dev/null 2>&1; then
+    fail "Blocked push: detected suspicious credential assignment in added lines."
+  fi
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  if [ "$remote_sha" = "$zero_sha" ]; then
+    check_range "$local_sha"
+  else
+    check_range "$remote_sha..$local_sha"
+  fi
+done
+
+if [ "$failed" -ne 0 ]; then
+  printf "%s\n" "Push aborted. Remove secrets or move them to env/secret manager and try again." >&2
+  exit 1
+fi
+
+exit 0
