@@ -14,6 +14,7 @@ import {
   Image,
   FileText,
   Star,
+  Mail,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -35,6 +36,7 @@ const NAV_BY_VARIANT: Record<Variant, NavItem[]> = {
     { href: '/dashboard/properties', label: 'Propiedades', icon: Building2 },
     { href: '/dashboard/requests', label: 'Reservas', icon: CalendarDays },
     { href: '/dashboard/payments', label: 'Pagos', icon: CreditCard },
+    { href: '/dashboard/notifications', label: 'Notificaciones', icon: Mail },
     { href: '/dashboard/finances', label: 'Finanzas', icon: BarChart3 },
   ],
   superadmin: [
@@ -150,4 +152,4 @@ export function DashboardSidebar({
 }
 
 export { type NavItem }
-export { CalendarDays, Building2, CreditCard, BarChart3, Users, Image, FileText, Star }
+export { CalendarDays, Building2, CreditCard, BarChart3, Users, Image, FileText, Star, Mail }

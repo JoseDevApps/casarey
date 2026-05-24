@@ -5,6 +5,7 @@ from app.models.property import Property, PropertyImage, PropertyCalendar, Calen
 from app.models.reservation import Reservation, BookingGuest, ReservationStatus
 from app.models.payment import PaymentMethod, PaymentVoucher
 from app.models.cms import CmsBanner, CmsStaticPage, CmsFeaturedProperty
+from app.models.notification import AdminNotificationPreference
 
 __all__ = [
     "User",
@@ -24,4 +25,5 @@ __all__ = [
     "CmsBanner",
     "CmsStaticPage",
     "CmsFeaturedProperty",
+    "AdminNotificationPreference",
 ]

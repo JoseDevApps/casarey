@@ -21,7 +21,12 @@ from app.schemas.reservation import (
 )
 from app.schemas.payment import PaymentVoucherResponse
 from app.dependencies import get_current_user, require_role
-from app.services import reservation_service, payment_service, storage_service
+from app.services import (
+    reservation_service,
+    payment_service,
+    storage_service,
+    reservation_notifications_service,
+)
 
 router = APIRouter()
 
@@ -95,6 +100,9 @@ async def create_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
+    await reservation_notifications_service.notify_admin_new_reservation(
+        db=db, reservation=reservation
+    )
     return await _build_reservation_response(db, reservation)
 
 
@@ -177,6 +185,9 @@ async def approve_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
+    await reservation_notifications_service.notify_client_reservation_approved(
+        db=db, reservation=reservation
+    )
     return await _build_reservation_response(db, reservation)
 
 
@@ -192,6 +203,9 @@ async def reject_reservation(
     )
     await db.commit()
     await db.refresh(reservation)
+    await reservation_notifications_service.notify_client_reservation_rejected(
+        db=db, reservation=reservation
+    )
     return await _build_reservation_response(db, reservation)
 
 
@@ -251,6 +265,19 @@ async def upload_voucher(
     )
     await db.commit()
     await db.refresh(voucher)
+
+    reservation_result = await db.execute(
+        select(Reservation).where(Reservation.id == reservation_id)
+    )
+    reservation = reservation_result.scalar_one_or_none()
+    if reservation:
+        await reservation_notifications_service.notify_admin_voucher_uploaded(
+            db=db, reservation=reservation
+        )
+        await reservation_notifications_service.notify_client_payment_received(
+            db=db, reservation=reservation
+        )
+
     url = storage_service.get_presigned_url(
         storage_service.BUCKET_PAYMENT_VOUCHERS, voucher.minio_key
     )
@@ -330,6 +357,9 @@ async def confirm_payment(
     reservation = await reservation_service.confirm_reservation_with_payment(db, reservation)
     await db.commit()
     await db.refresh(reservation)
+    await reservation_notifications_service.notify_client_payment_confirmed(
+        db=db, reservation=reservation
+    )
     return await _build_reservation_response(db, reservation)
 
 

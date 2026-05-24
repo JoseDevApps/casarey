@@ -18,6 +18,7 @@ import app.models.property  # noqa: F401
 import app.models.reservation  # noqa: F401
 import app.models.payment  # noqa: F401
 import app.models.cms  # noqa: F401
+import app.models.notification  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

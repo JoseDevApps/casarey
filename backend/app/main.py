@@ -7,7 +7,18 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.exceptions import AppError
-from app.routers import auth, users, properties, calendar, reservations, payments, finances, cms, uploads
+from app.routers import (
+    auth,
+    users,
+    properties,
+    calendar,
+    reservations,
+    payments,
+    finances,
+    cms,
+    uploads,
+    notification_preferences,
+)
 from app.services import storage_service
 
 logger = logging.getLogger("app.errors")
@@ -69,6 +80,11 @@ app.include_router(payments.router, prefix="/payment-methods", tags=["payments"]
 app.include_router(finances.router, prefix="/finances", tags=["finances"])
 app.include_router(cms.router, prefix="/cms", tags=["cms"])
 app.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
+app.include_router(
+    notification_preferences.router,
+    prefix="/notification-preferences",
+    tags=["notification-preferences"],
+)
 
 
 @app.exception_handler(AppError)

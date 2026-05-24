@@ -99,6 +99,22 @@ export interface BookingGuest {
   phone?: string
 }
 
+export interface AdminNotificationPreferences {
+  id: string
+  owner_id: string
+  notification_email?: string | null
+  client_approved_subject: string
+  client_approved_body: string
+  client_rejected_subject: string
+  client_rejected_body: string
+  client_payment_received_subject: string
+  client_payment_received_body: string
+  client_payment_confirmed_subject: string
+  client_payment_confirmed_body: string
+  created_at: string
+  updated_at: string
+}
+
 export interface PaymentMethod {
   id: string
   owner_id: string
