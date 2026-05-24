@@ -1,0 +1,2504 @@
++NEXTAUTH_URL=http://localhost:3100
++MINIO_SECURE=false
++NEXT_PUBLIC_MINIO_URL=http://localhost:9100
++
++# API URLs / CORS
++FRONTEND_URL=http://localhost:3100
++CORS_ORIGINS=http://localhost:3100
++
++# Auth expiration
++ACCESS_TOKEN_EXPIRE_MINUTES=15
++REFRESH_TOKEN_EXPIRE_DAYS=7
++EMAIL_VERIFICATION_EXPIRE_HOURS=24
++PASSWORD_RESET_EXPIRE_MINUTES=30
++
++# SMTP (email verification + password reset)
++SMTP_HOST=smtp.hostinger.com
++SMTP_PORT=465
++SMTP_USERNAME=admin@example.com
++SMTP_PASSWORD=change_in_production
++SMTP_ENCRYPTION=ssl
++SMTP_FROM_EMAIL=admin@example.com
++
++# Cookie / security hardening
++COOKIE_SECURE=false
++COOKIE_SAMESITE=lax
++COOKIE_DOMAIN=
++TRUSTED_HOSTS=*
++SECURITY_HEADERS_ENABLED=true
++HSTS_ENABLED=false
++HSTS_MAX_AGE=31536000
++# Git Hooks
++
++This repository uses `core.hooksPath=.githooks`.
++
++- `pre-push`: blocks pushes that contain likely secrets (`.env` files, private keys, cloud/API token patterns, and suspicious hardcoded credential assignments).
++
++To enable on a fresh clone:
++
++```bash
++git config core.hooksPath .githooks
++```
++#!/usr/bin/env sh
++set -eu
++
++zero_sha="0000000000000000000000000000000000000000"
++failed=0
++
++tmp_added="$(mktemp)"
++trap 'rm -f "$tmp_added"' EXIT
++
++fail() {
++  printf "%s\n" "$1" >&2
++  failed=1
++}
++
++check_range() {
++  range="$1"
++
++  changed_files="$(git diff --name-only "$range" || true)"
++
++  if printf "%s\n" "$changed_files" | grep -E '(^|/)\.env($|\.|_)' | grep -Ev '(^|/)\.env\.example$' >/dev/null 2>&1; then
++    fail "Blocked push: detected .env-like file in commits being pushed."
++  fi
++
++  if printf "%s\n" "$changed_files" | grep -E '\.(pem|key|p12|pfx)$' >/dev/null 2>&1; then
++    fail "Blocked push: detected private key/certificate file extension in commits being pushed."
++  fi
++
++  git diff -U0 "$range" | sed -n '/^+/p' | sed '/^+++/d' > "$tmp_added" || true
++
++  if [ ! -s "$tmp_added" ]; then
++    return
++  fi
++
++  if grep -E '(-----BEGIN (RSA|EC|DSA|OPENSSH|PRIVATE) KEY-----|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]+)' "$tmp_added" >/dev/null 2>&1; then
++    fail "Blocked push: detected high-risk secret pattern in added lines."
++  fi
++
++  if grep -Ei '(smtp_password|jwt_secret|nextauth_secret|db_password|minio_password)[[:space:]]*[:=]' "$tmp_added" | \
++    grep -Eiv '(change_in_production|example|placeholder|your_|\$\{|<|xxx)' >/dev/null 2>&1; then
++    fail "Blocked push: detected suspicious credential assignment in added lines."
++  fi
++}
++
++while read -r local_ref local_sha remote_ref remote_sha; do
++  [ -z "${local_sha:-}" ] && continue
++  if [ "$remote_sha" = "$zero_sha" ]; then
++    check_range "$local_sha"
++  else
++    check_range "$remote_sha..$local_sha"
++  fi
++done
++
++if [ "$failed" -ne 0 ]; then
++  printf "%s\n" "Push aborted. Remove secrets or move them to env/secret manager and try again." >&2
++  exit 1
++fi
++
++exit 0
++.envrc
++.env.production
++.env.staging
++.env.test
++
++# Local agent artifacts
++.agents/
++AGENTS.md
++
++# Secrets / keys
++*.pem
++*.key
++*.p12
++*.pfx
++secrets/
++from app.core.database import Base
++import app.models  # noqa: F401
++    bind = op.get_bind()
++    Base.metadata.create_all(bind=bind, checkfirst=True)
++    bind = op.get_bind()
++    Base.metadata.drop_all(bind=bind, checkfirst=True)
++from sqlalchemy import inspect
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "properties" not in inspector.get_table_names():
++        return
++
++    existing_columns = {c["name"] for c in inspector.get_columns("properties")}
++    video_status_enum.create(bind, checkfirst=True)
++    if "video_minio_key" not in existing_columns:
++        op.add_column('properties', sa.Column('video_minio_key', sa.String(), nullable=True))
++    if "video_poster_key" not in existing_columns:
++        op.add_column('properties', sa.Column('video_poster_key', sa.String(), nullable=True))
++    if "video_status" not in existing_columns:
++        op.add_column(
++            'properties',
++            sa.Column('video_status', video_status_enum, nullable=True),
++        )
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "properties" in inspector.get_table_names():
++        existing_columns = {c["name"] for c in inspector.get_columns("properties")}
++        if "video_status" in existing_columns:
++            op.drop_column('properties', 'video_status')
++        if "video_poster_key" in existing_columns:
++            op.drop_column('properties', 'video_poster_key')
++        if "video_minio_key" in existing_columns:
++            op.drop_column('properties', 'video_minio_key')
++from sqlalchemy import inspect
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "reservations" not in inspector.get_table_names():
++        return
++    existing_columns = {c["name"] for c in inspector.get_columns("reservations")}
++    if "discount_amount" not in existing_columns:
++        op.add_column(
++            'reservations',
++            sa.Column('discount_amount', sa.Numeric(10, 2), nullable=False, server_default='0'),
++        )
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "reservations" in inspector.get_table_names():
++        existing_columns = {c["name"] for c in inspector.get_columns("reservations")}
++        if "discount_amount" in existing_columns:
++            op.drop_column('reservations', 'discount_amount')
++from sqlalchemy import inspect
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "properties" in inspector.get_table_names():
++        property_columns = {c["name"] for c in inspector.get_columns("properties")}
++        if "rate_night_1" not in property_columns:
++            op.add_column(
++                "properties",
++                sa.Column("rate_night_1", sa.Numeric(10, 2), nullable=False, server_default="0"),
++            )
++        if "rate_night_2" not in property_columns:
++            op.add_column(
++                "properties",
++                sa.Column("rate_night_2", sa.Numeric(10, 2), nullable=False, server_default="0"),
++            )
++        if "rate_night_3" not in property_columns:
++            op.add_column(
++                "properties",
++                sa.Column("rate_night_3", sa.Numeric(10, 2), nullable=False, server_default="0"),
++            )
++        refreshed_property_columns = {c["name"] for c in inspector.get_columns("properties")}
++        if {"rate_adult", "rate_night_1", "rate_night_2", "rate_night_3"}.issubset(refreshed_property_columns):
++            op.execute(
++                """
++                UPDATE properties
++                SET rate_night_1 = rate_adult,
++                    rate_night_2 = rate_adult,
++                    rate_night_3 = rate_adult
++                """
++            )
++            op.alter_column("properties", "rate_night_1", server_default=None)
++            op.alter_column("properties", "rate_night_2", server_default=None)
++            op.alter_column("properties", "rate_night_3", server_default=None)
++    if "reservations" in inspector.get_table_names():
++        reservation_columns = {c["name"] for c in inspector.get_columns("reservations")}
++        if "snapshot_nightly_rate" not in reservation_columns:
++            op.add_column(
++                "reservations",
++                sa.Column("snapshot_nightly_rate", sa.Numeric(10, 2), nullable=False, server_default="0"),
++            )
++        if "snapshot_pricing_tier" not in reservation_columns:
++            op.add_column(
++                "reservations",
++                sa.Column("snapshot_pricing_tier", sa.Integer(), nullable=False, server_default="1"),
++            )
++        refreshed_reservation_columns = {c["name"] for c in inspector.get_columns("reservations")}
++        if {"snapshot_rate_adult", "snapshot_nightly_rate", "snapshot_pricing_tier", "check_in_date", "check_out_date"}.issubset(refreshed_reservation_columns):
++            op.execute(
++                """
++                UPDATE reservations
++                SET snapshot_nightly_rate = snapshot_rate_adult,
++                    snapshot_pricing_tier = CASE
++                        WHEN (check_out_date::date - check_in_date::date) <= 1 THEN 1
++                        WHEN (check_out_date::date - check_in_date::date) = 2 THEN 2
++                        ELSE 3
++                    END
++                """
++            )
++            op.alter_column("reservations", "snapshot_nightly_rate", server_default=None)
++            op.alter_column("reservations", "snapshot_pricing_tier", server_default=None)
++    bind = op.get_bind()
++    inspector = inspect(bind)
++
++    if "reservations" in inspector.get_table_names():
++        reservation_columns = {c["name"] for c in inspector.get_columns("reservations")}
++        if "snapshot_pricing_tier" in reservation_columns:
++            op.drop_column("reservations", "snapshot_pricing_tier")
++        if "snapshot_nightly_rate" in reservation_columns:
++            op.drop_column("reservations", "snapshot_nightly_rate")
++
++    if "properties" in inspector.get_table_names():
++        property_columns = {c["name"] for c in inspector.get_columns("properties")}
++        if "rate_night_3" in property_columns:
++            op.drop_column("properties", "rate_night_3")
++        if "rate_night_2" in property_columns:
++            op.drop_column("properties", "rate_night_2")
++        if "rate_night_1" in property_columns:
++            op.drop_column("properties", "rate_night_1")
++"""add password reset controls for superadmin flow
++
++Revision ID: b3a1f9d2c4e6
++Revises: 9f2a4c1b7e10
++Create Date: 2026-05-23 17:00:00.000000+00:00
++
++"""
++from typing import Sequence, Union
++
++from alembic import op
++import sqlalchemy as sa
++from sqlalchemy.dialects import postgresql
++from sqlalchemy import inspect
++
++
++revision: str = "b3a1f9d2c4e6"
++down_revision: Union[str, None] = "9f2a4c1b7e10"
++branch_labels: Union[str, Sequence[str], None] = None
++depends_on: Union[str, Sequence[str], None] = None
++
++
++def upgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++
++    if "users" in inspector.get_table_names():
++        user_columns = {c["name"] for c in inspector.get_columns("users")}
++        if "must_change_password" not in user_columns:
++            op.add_column(
++                "users",
++                sa.Column("must_change_password", sa.Boolean(), nullable=False, server_default=sa.text("false")),
++            )
++            op.alter_column("users", "must_change_password", server_default=None)
++
++    if "admin_password_resets" not in inspector.get_table_names():
++        op.create_table(
++            "admin_password_resets",
++            sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
++            sa.Column("target_user_id", postgresql.UUID(as_uuid=True), nullable=False),
++            sa.Column("actor_user_id", postgresql.UUID(as_uuid=True), nullable=False),
++            sa.Column("reason", sa.String(), nullable=True),
++            sa.Column("revoked_sessions", sa.Integer(), nullable=False, server_default="0"),
++            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
++            sa.ForeignKeyConstraint(["actor_user_id"], ["users.id"]),
++            sa.ForeignKeyConstraint(["target_user_id"], ["users.id"], ondelete="CASCADE"),
++            sa.PrimaryKeyConstraint("id"),
++        )
++
++    existing_indexes = {ix["name"] for ix in inspector.get_indexes("admin_password_resets")}
++    if "ix_admin_password_resets_target_user_id" not in existing_indexes:
++        op.create_index(
++            "ix_admin_password_resets_target_user_id",
++            "admin_password_resets",
++            ["target_user_id"],
++            unique=False,
++        )
++    if "ix_admin_password_resets_actor_user_id" not in existing_indexes:
++        op.create_index(
++            "ix_admin_password_resets_actor_user_id",
++            "admin_password_resets",
++            ["actor_user_id"],
++            unique=False,
++        )
++    if "ix_admin_password_resets_created_at" not in existing_indexes:
++        op.create_index(
++            "ix_admin_password_resets_created_at",
++            "admin_password_resets",
++            ["created_at"],
++            unique=False,
++        )
++
++
++def downgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++
++    if "admin_password_resets" in inspector.get_table_names():
++        existing_indexes = {ix["name"] for ix in inspector.get_indexes("admin_password_resets")}
++        if "ix_admin_password_resets_created_at" in existing_indexes:
++            op.drop_index("ix_admin_password_resets_created_at", table_name="admin_password_resets")
++        if "ix_admin_password_resets_actor_user_id" in existing_indexes:
++            op.drop_index("ix_admin_password_resets_actor_user_id", table_name="admin_password_resets")
++        if "ix_admin_password_resets_target_user_id" in existing_indexes:
++            op.drop_index("ix_admin_password_resets_target_user_id", table_name="admin_password_resets")
++        op.drop_table("admin_password_resets")
++
++    if "users" in inspector.get_table_names():
++        user_columns = {c["name"] for c in inspector.get_columns("users")}
++        if "must_change_password" in user_columns:
++            op.drop_column("users", "must_change_password")
++"""add email verification flag to users
++
++Revision ID: c91a2d7d4b11
++Revises: b3a1f9d2c4e6
++Create Date: 2026-05-23 18:30:00.000000+00:00
++
++"""
++from typing import Sequence, Union
++
++from alembic import op
++import sqlalchemy as sa
++from sqlalchemy import inspect
++
++
++revision: str = "c91a2d7d4b11"
++down_revision: Union[str, None] = "b3a1f9d2c4e6"
++branch_labels: Union[str, Sequence[str], None] = None
++depends_on: Union[str, Sequence[str], None] = None
++
++
++def upgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "users" not in inspector.get_table_names():
++        return
++    user_columns = {c["name"] for c in inspector.get_columns("users")}
++    if "email_verified" not in user_columns:
++        op.add_column(
++            "users",
++            sa.Column("email_verified", sa.Boolean(), nullable=False, server_default=sa.text("true")),
++        )
++        op.alter_column("users", "email_verified", server_default=None)
++
++
++def downgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++    if "users" not in inspector.get_table_names():
++        return
++    user_columns = {c["name"] for c in inspector.get_columns("users")}
++    if "email_verified" in user_columns:
++        op.drop_column("users", "email_verified")
++"""add password reset tokens table
++
++Revision ID: f4a9d2c7e5ab
++Revises: c91a2d7d4b11
++Create Date: 2026-05-23 20:00:00.000000+00:00
++
++"""
++from typing import Sequence, Union
++
++from alembic import op
++import sqlalchemy as sa
++from sqlalchemy.dialects import postgresql
++from sqlalchemy import inspect
++
++
++revision: str = "f4a9d2c7e5ab"
++down_revision: Union[str, None] = "c91a2d7d4b11"
++branch_labels: Union[str, Sequence[str], None] = None
++depends_on: Union[str, Sequence[str], None] = None
++
++
++def upgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++
++    if "password_reset_tokens" not in inspector.get_table_names():
++        op.create_table(
++            "password_reset_tokens",
++            sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
++            sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
++            sa.Column("token_hash", sa.String(), nullable=False),
++            sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
++            sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
++            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
++            sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
++            sa.PrimaryKeyConstraint("id"),
++            sa.UniqueConstraint("token_hash"),
++        )
++
++    existing_indexes = {ix["name"] for ix in inspector.get_indexes("password_reset_tokens")}
++    if "ix_password_reset_tokens_user_id" not in existing_indexes:
++        op.create_index("ix_password_reset_tokens_user_id", "password_reset_tokens", ["user_id"], unique=False)
++    if "ix_password_reset_tokens_token_hash" not in existing_indexes:
++        op.create_index("ix_password_reset_tokens_token_hash", "password_reset_tokens", ["token_hash"], unique=False)
++    if "ix_password_reset_tokens_expires_at" not in existing_indexes:
++        op.create_index("ix_password_reset_tokens_expires_at", "password_reset_tokens", ["expires_at"], unique=False)
++    if "ix_password_reset_tokens_used_at" not in existing_indexes:
++        op.create_index("ix_password_reset_tokens_used_at", "password_reset_tokens", ["used_at"], unique=False)
++    if "ix_password_reset_tokens_created_at" not in existing_indexes:
++        op.create_index("ix_password_reset_tokens_created_at", "password_reset_tokens", ["created_at"], unique=False)
++
++
++def downgrade() -> None:
++    bind = op.get_bind()
++    inspector = inspect(bind)
++
++    if "password_reset_tokens" not in inspector.get_table_names():
++        return
++
++    existing_indexes = {ix["name"] for ix in inspector.get_indexes("password_reset_tokens")}
++    if "ix_password_reset_tokens_created_at" in existing_indexes:
++        op.drop_index("ix_password_reset_tokens_created_at", table_name="password_reset_tokens")
++    if "ix_password_reset_tokens_used_at" in existing_indexes:
++        op.drop_index("ix_password_reset_tokens_used_at", table_name="password_reset_tokens")
++    if "ix_password_reset_tokens_expires_at" in existing_indexes:
++        op.drop_index("ix_password_reset_tokens_expires_at", table_name="password_reset_tokens")
++    if "ix_password_reset_tokens_token_hash" in existing_indexes:
++        op.drop_index("ix_password_reset_tokens_token_hash", table_name="password_reset_tokens")
++    if "ix_password_reset_tokens_user_id" in existing_indexes:
++        op.drop_index("ix_password_reset_tokens_user_id", table_name="password_reset_tokens")
++
++    op.drop_table("password_reset_tokens")
++    FRONTEND_URL: str = "http://localhost:3100"
++    EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24
++    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
++    SMTP_HOST: str = ""
++    SMTP_PORT: int = 465
++    SMTP_USERNAME: str = ""
++    SMTP_PASSWORD: str = ""
++    SMTP_ENCRYPTION: str = "ssl"
++    SMTP_FROM_EMAIL: str = ""
++    COOKIE_SECURE: bool = False
++    COOKIE_SAMESITE: str = "lax"
++    COOKIE_DOMAIN: str = ""
++    TRUSTED_HOSTS: str = "*"
++    SECURITY_HEADERS_ENABLED: bool = True
++    HSTS_ENABLED: bool = False
++    HSTS_MAX_AGE: int = 31536000
++    @property
++    def trusted_hosts_list(self) -> List[str]:
++        hosts = [h.strip() for h in self.TRUSTED_HOSTS.split(",") if h.strip()]
++        return hosts or ["*"]
++
++    @property
++    def cookie_samesite_value(self) -> str:
++        value = self.COOKIE_SAMESITE.lower().strip()
++        if value in {"lax", "strict", "none"}:
++            return value
++        return "lax"
++
++    @property
++    def cookie_domain_value(self) -> str | None:
++        return self.COOKIE_DOMAIN.strip() or None
++
++def create_email_verification_token(data: dict) -> str:
++    to_encode = data.copy()
++    expire = datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS)
++    to_encode.update({"exp": expire, "type": "email_verify"})
++    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
++
++
++def create_password_reset_token(data: dict) -> str:
++    to_encode = data.copy()
++    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
++    to_encode.update({"exp": expire, "type": "password_reset"})
++    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
++
++
++from fastapi import Depends, HTTPException, status, Cookie, Request
++    request: Request,
++
++    if request is not None and user.must_change_password:
++        # Permit only the minimal auth flows needed to complete password change.
++        allowed_paths = {"/auth/me", "/auth/change-password", "/auth/logout", "/auth/refresh"}
++        if request.url.path not in allowed_paths:
++            raise HTTPException(
++                status_code=status.HTTP_403_FORBIDDEN,
++                detail={
++                    "detail": "Debes cambiar tu contraseña temporal antes de continuar",
++                    "code": "PASSWORD_CHANGE_REQUIRED",
++                },
++            )
++from fastapi.middleware.trustedhost import TrustedHostMiddleware
++if settings.trusted_hosts_list != ["*"]:
++    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts_list)
++
++
++@app.middleware("http")
++async def add_security_headers(request: Request, call_next):
++    response = await call_next(request)
++    if settings.SECURITY_HEADERS_ENABLED:
++        response.headers.setdefault("X-Content-Type-Options", "nosniff")
++        response.headers.setdefault("X-Frame-Options", "DENY")
++        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
++        response.headers.setdefault(
++            "Permissions-Policy",
++            "camera=(), microphone=(), geolocation=()",
++        )
++        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
++        if settings.HSTS_ENABLED:
++            response.headers.setdefault(
++                "Strict-Transport-Security",
++                f"max-age={settings.HSTS_MAX_AGE}; includeSubDomains",
++            )
++    return response
++
++
++from app.models.user import User, UserRole, AdminPasswordResetAudit
++from app.models.password_reset_token import PasswordResetToken
++    "AdminPasswordResetAudit",
++    "PasswordResetToken",
++import uuid
++from sqlalchemy import Column, String, DateTime, ForeignKey, func
++from sqlalchemy.dialects.postgresql import UUID
++from app.core.database import Base
++
++
++class PasswordResetToken(Base):
++    __tablename__ = "password_reset_tokens"
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
++    token_hash = Column(String, nullable=False, unique=True, index=True)
++    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
++    used_at = Column(DateTime(timezone=True), nullable=True, index=True)
++    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
++from sqlalchemy import Column, String, Boolean, Enum, DateTime, ForeignKey, Integer, func
++    email_verified = Column(Boolean, default=False, nullable=False)
++    must_change_password = Column(Boolean, default=False, nullable=False)
++
++
++class AdminPasswordResetAudit(Base):
++    __tablename__ = "admin_password_resets"
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    target_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("users.id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
++    actor_user_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("users.id"),
++        nullable=False,
++        index=True,
++    )
++    reason = Column(String, nullable=True)
++    revoked_sessions = Column(Integer, nullable=False, default=0)
++    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
++    create_email_verification_token,
++    create_password_reset_token,
++from app.models.password_reset_token import PasswordResetToken
++from app.services import email_service
++from app.schemas.user import (
++    UserCreate,
++    UserLogin,
++    UserResponse,
++    TokenResponse,
++    ChangePasswordRequest,
++    EmailVerificationRequest,
++    EmailVerificationResendRequest,
++    EmailVerificationResult,
++    ForgotPasswordRequest,
++    ResetPasswordRequest,
++)
++def _cookie_opts() -> dict:
++    secure_cookie = settings.COOKIE_SECURE or settings.cookie_samesite_value == "none"
++    opts = {
++        "httponly": True,
++        "samesite": settings.cookie_samesite_value,
++        "secure": secure_cookie,
++    }
++    if settings.cookie_domain_value:
++        opts["domain"] = settings.cookie_domain_value
++    return opts
++
++
++def _delete_cookie_opts() -> dict:
++    secure_cookie = settings.COOKIE_SECURE or settings.cookie_samesite_value == "none"
++    opts = {
++        "path": "/",
++        "httponly": True,
++        "samesite": settings.cookie_samesite_value,
++        "secure": secure_cookie,
++    }
++    if settings.cookie_domain_value:
++        opts["domain"] = settings.cookie_domain_value
++    return opts
++
++
++        email_verified=False,
++
++    await db.flush()
++
++    try:
++        verification_token = create_email_verification_token(
++            {"sub": str(user.id), "email": user.email}
++        )
++        await email_service.send_verification_email(
++            to_email=user.email,
++            full_name=user.full_name,
++            token=verification_token,
++        )
++    except Exception:
++        await db.rollback()
++        raise HTTPException(
++            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
++            detail={
++                "detail": "No se pudo enviar el correo de verificación. Intenta de nuevo.",
++                "code": "EMAIL_DELIVERY_FAILED",
++            },
++        )
++
++    if not user.email_verified:
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail={
++                "detail": "Debes verificar tu correo electrónico antes de iniciar sesión",
++                "code": "EMAIL_NOT_VERIFIED",
++            },
++        )
++    response.set_cookie(
++        "access_token",
++        access_token,
++        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
++        **_cookie_opts(),
++    )
++        **_cookie_opts(),
++        "access_token",
++        new_access_token,
++        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
++        **_cookie_opts(),
++        **_cookie_opts(),
++@router.post("/verify-email", response_model=EmailVerificationResult)
++async def verify_email(
++    body: EmailVerificationRequest,
++    db: AsyncSession = Depends(get_db),
++):
++    payload = verify_token(body.token)
++    if payload.get("type") != "email_verify":
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Token inválido", "code": "INVALID_TOKEN"},
++        )
++
++    user_id = payload.get("sub")
++    email = payload.get("email")
++    if not user_id or not email:
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Token inválido", "code": "INVALID_TOKEN"},
++        )
++
++    result = await db.execute(select(User).where(User.id == UUID(user_id)))
++    user = result.scalar_one_or_none()
++    if not user or user.email.lower() != str(email).lower():
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Token inválido", "code": "INVALID_TOKEN"},
++        )
++
++    if not user.email_verified:
++        user.email_verified = True
++        await db.commit()
++
++    return EmailVerificationResult(verified=True)
++
++
++@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
++async def resend_verification(
++    body: EmailVerificationResendRequest,
++    db: AsyncSession = Depends(get_db),
++):
++    result = await db.execute(select(User).where(User.email == body.email))
++    user = result.scalar_one_or_none()
++    if not user or user.email_verified:
++        return
++
++    try:
++        verification_token = create_email_verification_token(
++            {"sub": str(user.id), "email": user.email}
++        )
++        await email_service.send_verification_email(
++            to_email=user.email,
++            full_name=user.full_name,
++            token=verification_token,
++        )
++    except Exception:
++        raise HTTPException(
++            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
++            detail={
++                "detail": "No se pudo reenviar el correo de verificación. Intenta de nuevo.",
++                "code": "EMAIL_DELIVERY_FAILED",
++            },
++        )
++
++
++@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
++async def forgot_password(
++    body: ForgotPasswordRequest,
++    db: AsyncSession = Depends(get_db),
++):
++    try:
++        result = await db.execute(select(User).where(User.email == body.email))
++        user = result.scalar_one_or_none()
++        if not user or not user.is_active:
++            return Response(status_code=status.HTTP_204_NO_CONTENT)
++
++        now = datetime.now(timezone.utc)
++        active_tokens_result = await db.execute(
++            select(PasswordResetToken).where(
++                PasswordResetToken.user_id == user.id,
++                PasswordResetToken.used_at == None,
++                PasswordResetToken.expires_at > now,
++            )
++        )
++        active_tokens = active_tokens_result.scalars().all()
++        for token in active_tokens:
++            token.used_at = now
++
++        reset_token = create_password_reset_token({"sub": str(user.id), "email": user.email})
++        db.add(
++            PasswordResetToken(
++                user_id=user.id,
++                token_hash=_hash_token(reset_token),
++                expires_at=now + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES),
++            )
++        )
++        await db.commit()
++
++        try:
++            await email_service.send_password_reset_email(
++                to_email=user.email,
++                full_name=user.full_name,
++                token=reset_token,
++            )
++        except Exception:
++            # Keep generic response behavior to avoid account enumeration.
++            pass
++    except Exception:
++        await db.rollback()
++
++    return Response(status_code=status.HTTP_204_NO_CONTENT)
++
++
++@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
++async def reset_password(
++    body: ResetPasswordRequest,
++    db: AsyncSession = Depends(get_db),
++):
++    payload = verify_token(body.token)
++    if payload.get("type") != "password_reset":
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Enlace inválido o expirado", "code": "INVALID_TOKEN"},
++        )
++
++    user_id = payload.get("sub")
++    email = payload.get("email")
++    if not user_id or not email:
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Enlace inválido o expirado", "code": "INVALID_TOKEN"},
++        )
++
++    now = datetime.now(timezone.utc)
++    token_hash = _hash_token(body.token)
++
++    token_result = await db.execute(
++        select(PasswordResetToken).where(
++            PasswordResetToken.token_hash == token_hash,
++            PasswordResetToken.used_at == None,
++            PasswordResetToken.expires_at > now,
++        )
++    )
++    password_reset_token = token_result.scalar_one_or_none()
++    if not password_reset_token:
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Enlace inválido o expirado", "code": "INVALID_TOKEN"},
++        )
++
++    user_result = await db.execute(
++        select(User).where(User.id == UUID(user_id), User.is_active == True)
++    )
++    user = user_result.scalar_one_or_none()
++    if (
++        not user
++        or str(user.email).lower() != str(email).lower()
++        or password_reset_token.user_id != user.id
++    ):
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail={"detail": "Enlace inválido o expirado", "code": "INVALID_TOKEN"},
++        )
++
++    if verify_password(body.new_password, user.password_hash):
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail={
++                "detail": "La nueva contraseña debe ser distinta a la actual",
++                "code": "PASSWORD_REUSE",
++            },
++        )
++
++    refresh_tokens_result = await db.execute(
++        select(RefreshToken).where(
++            RefreshToken.user_id == user.id,
++            RefreshToken.revoked_at == None,
++            RefreshToken.expires_at > now,
++        )
++    )
++    refresh_tokens = refresh_tokens_result.scalars().all()
++    for token in refresh_tokens:
++        token.revoked_at = now
++
++    password_reset_token.used_at = now
++    user.password_hash = hash_password(body.new_password)
++    user.must_change_password = False
++    await db.commit()
++
++    return Response(status_code=status.HTTP_204_NO_CONTENT)
++
++
++    response.delete_cookie("access_token", **_delete_cookie_opts())
++    response.delete_cookie("refresh_token", **_delete_cookie_opts())
++
++
++@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
++async def change_password(
++    body: ChangePasswordRequest,
++    db: AsyncSession = Depends(get_db),
++    current_user: User = Depends(get_current_user),
++):
++    if not verify_password(body.current_password, current_user.password_hash):
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail={"detail": "La contraseña actual es incorrecta", "code": "INVALID_CURRENT_PASSWORD"},
++        )
++
++    if verify_password(body.new_password, current_user.password_hash):
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail={
++                "detail": "La nueva contraseña debe ser distinta a la actual",
++                "code": "PASSWORD_REUSE",
++            },
++        )
++
++    now = datetime.now(timezone.utc)
++    token_result = await db.execute(
++        select(RefreshToken).where(
++            RefreshToken.user_id == current_user.id,
++            RefreshToken.revoked_at == None,
++            RefreshToken.expires_at > now,
++        )
++    )
++    active_tokens = token_result.scalars().all()
++    for token in active_tokens:
++        token.revoked_at = now
++
++    current_user.password_hash = hash_password(body.new_password)
++    current_user.must_change_password = False
++    await db.commit()
++from datetime import datetime, timezone
++from app.core.security import hash_password
++from app.models.refresh_token import RefreshToken
++from app.models.user import User, UserRole, AdminPasswordResetAudit
++from app.schemas.user import (
++    UserResponse,
++    UserListResponse,
++    UserRoleUpdate,
++    UserStatusUpdate,
++    AdminPasswordResetRequest,
++    PasswordResetResult,
++)
++
++
++@router.patch("/{user_id}/status", response_model=UserResponse)
++async def update_user_status(
++    user_id: UUID,
++    body: UserStatusUpdate,
++    db: AsyncSession = Depends(get_db),
++    _current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
++):
++    result = await db.execute(select(User).where(User.id == user_id))
++    user = result.scalar_one_or_none()
++    if not user:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail={"detail": "Usuario no encontrado", "code": "USER_NOT_FOUND"},
++        )
++
++    if user.role == UserRole.SUPER_ADMIN:
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail={
++                "detail": "No se puede habilitar o deshabilitar una cuenta SUPER_ADMIN",
++                "code": "SUPER_ADMIN_IMMUTABLE",
++            },
++        )
++
++    if user.is_active == body.is_active:
++        return user
++
++    user.is_active = body.is_active
++
++    if not body.is_active:
++        now = datetime.now(timezone.utc)
++        token_result = await db.execute(
++            select(RefreshToken).where(
++                RefreshToken.user_id == user.id,
++                RefreshToken.revoked_at == None,
++                RefreshToken.expires_at > now,
++            )
++        )
++        active_tokens = token_result.scalars().all()
++        for token in active_tokens:
++            token.revoked_at = now
++
++    await db.commit()
++    await db.refresh(user)
++    return user
++
++
++@router.post("/{user_id}/password-reset", response_model=PasswordResetResult)
++async def reset_user_password(
++    user_id: UUID,
++    body: AdminPasswordResetRequest,
++    db: AsyncSession = Depends(get_db),
++    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
++):
++    result = await db.execute(select(User).where(User.id == user_id))
++    user = result.scalar_one_or_none()
++    if not user:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail={"detail": "Usuario no encontrado", "code": "USER_NOT_FOUND"},
++        )
++
++    if user.role == UserRole.SUPER_ADMIN:
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail={
++                "detail": "No se puede restablecer la contraseña de un SUPER_ADMIN desde esta ruta",
++                "code": "INVALID_TARGET_ROLE",
++            },
++        )
++
++    now = datetime.now(timezone.utc)
++    token_result = await db.execute(
++        select(RefreshToken).where(
++            RefreshToken.user_id == user.id,
++            RefreshToken.revoked_at == None,
++            RefreshToken.expires_at > now,
++        )
++    )
++    active_tokens = token_result.scalars().all()
++    for token in active_tokens:
++        token.revoked_at = now
++
++    user.password_hash = hash_password(body.new_password)
++    user.must_change_password = True
++
++    audit = AdminPasswordResetAudit(
++        target_user_id=user.id,
++        actor_user_id=current_user.id,
++        reason=body.reason,
++        revoked_sessions=len(active_tokens),
++    )
++    db.add(audit)
++
++    await db.commit()
++    return PasswordResetResult(revoked_sessions=len(active_tokens))
++from pydantic import BaseModel, EmailStr, field_validator
++def _validate_password_strength(value: str) -> str:
++    if len(value) < 8:
++        raise ValueError("La contraseña debe tener al menos 8 caracteres")
++    if not any(char.isupper() for char in value):
++        raise ValueError("La contraseña debe tener al menos una letra mayúscula")
++    if not any(char.isdigit() for char in value):
++        raise ValueError("La contraseña debe tener al menos un número")
++    return value
++
++
++    @field_validator("password")
++    @classmethod
++    def validate_password(cls, value: str) -> str:
++        return _validate_password_strength(value)
++
++    email_verified: bool
++    must_change_password: bool
++class UserStatusUpdate(BaseModel):
++    is_active: bool
++
++
++class AdminPasswordResetRequest(BaseModel):
++    new_password: str
++    reason: Optional[str] = None
++
++    @field_validator("new_password")
++    @classmethod
++    def validate_new_password(cls, value: str) -> str:
++        return _validate_password_strength(value)
++
++
++class ChangePasswordRequest(BaseModel):
++    current_password: str
++    new_password: str
++
++    @field_validator("new_password")
++    @classmethod
++    def validate_new_password(cls, value: str) -> str:
++        return _validate_password_strength(value)
++
++
++class EmailVerificationRequest(BaseModel):
++    token: str
++
++
++class EmailVerificationResendRequest(BaseModel):
++    email: EmailStr
++
++
++class EmailVerificationResult(BaseModel):
++    verified: bool
++
++
++class ForgotPasswordRequest(BaseModel):
++    email: EmailStr
++
++
++class ResetPasswordRequest(BaseModel):
++    token: str
++    new_password: str
++
++    @field_validator("new_password")
++    @classmethod
++    def validate_new_password(cls, value: str) -> str:
++        return _validate_password_strength(value)
++
++
++class PasswordResetResult(BaseModel):
++    revoked_sessions: int
++
++
++import asyncio
++import logging
++import smtplib
++import ssl
++from email.message import EmailMessage
++from urllib.parse import quote
++
++from app.core.config import settings
++
++logger = logging.getLogger("app.email")
++
++
++def _from_email() -> str:
++    return settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
++
++
++def _build_verification_link(token: str) -> str:
++    base = settings.FRONTEND_URL.rstrip("/")
++    return f"{base}/verify-email?token={quote(token, safe='')}"
++
++
++def _build_password_reset_link(token: str) -> str:
++    base = settings.FRONTEND_URL.rstrip("/")
++    return f"{base}/reset-password?token={quote(token, safe='')}"
++
++
++def smtp_is_configured() -> bool:
++    return bool(
++        settings.SMTP_HOST
++        and settings.SMTP_USERNAME
++        and settings.SMTP_PASSWORD
++        and _from_email()
++    )
++
++
++def _send_message_sync(message: EmailMessage) -> None:
++    encryption = settings.SMTP_ENCRYPTION.lower()
++    context = ssl.create_default_context()
++
++    if encryption == "ssl":
++        with smtplib.SMTP_SSL(
++            settings.SMTP_HOST,
++            settings.SMTP_PORT,
++            context=context,
++            timeout=20,
++        ) as server:
++            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
++            server.send_message(message)
++        return
++
++    if encryption in {"tls", "starttls"}:
++        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
++            server.ehlo()
++            server.starttls(context=context)
++            server.ehlo()
++            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
++            server.send_message(message)
++        return
++
++    raise ValueError("SMTP_ENCRYPTION debe ser 'ssl', 'tls' o 'starttls'")
++
++
++async def send_verification_email(to_email: str, full_name: str, token: str) -> None:
++    if not smtp_is_configured():
++        raise RuntimeError("SMTP no está configurado")
++
++    link = _build_verification_link(token)
++    from_email = _from_email()
++
++    message = EmailMessage()
++    message["Subject"] = "Verifica tu cuenta en Casas de Campo"
++    message["From"] = from_email
++    message["To"] = to_email
++
++    plain_text = (
++        f"Hola {full_name},\n\n"
++        "Gracias por registrarte en Casas de Campo.\n"
++        "Para activar tu cuenta, verifica tu correo en el siguiente enlace:\n\n"
++        f"{link}\n\n"
++        f"Este enlace expira en {settings.EMAIL_VERIFICATION_EXPIRE_HOURS} horas.\n"
++        "Si no creaste esta cuenta, puedes ignorar este mensaje."
++    )
++    message.set_content(plain_text)
++
++    html_text = f"""
++    <html>
++      <body style="font-family: Arial, sans-serif; color: #1f2937;">
++        <p>Hola <strong>{full_name}</strong>,</p>
++        <p>Gracias por registrarte en Casas de Campo.</p>
++        <p>Para activar tu cuenta, verifica tu correo en el siguiente enlace:</p>
++        <p>
++          <a href="{link}">Verificar cuenta</a>
++        </p>
++        <p>Este enlace expira en {settings.EMAIL_VERIFICATION_EXPIRE_HOURS} horas.</p>
++        <p>Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
++      </body>
++    </html>
++    """
++    message.add_alternative(html_text, subtype="html")
++
++    try:
++        await asyncio.to_thread(_send_message_sync, message)
++    except Exception:
++        logger.exception("Fallo al enviar correo de verificación a %s", to_email)
++        raise
++
++
++async def send_password_reset_email(to_email: str, full_name: str, token: str) -> None:
++    if not smtp_is_configured():
++        raise RuntimeError("SMTP no está configurado")
++
++    link = _build_password_reset_link(token)
++    from_email = _from_email()
++
++    message = EmailMessage()
++    message["Subject"] = "Restablece tu contraseña en Casas de Campo"
++    message["From"] = from_email
++    message["To"] = to_email
++
++    plain_text = (
++        f"Hola {full_name},\n\n"
++        "Recibimos una solicitud para restablecer tu contraseña.\n"
++        "Usa este enlace para definir una nueva contraseña:\n\n"
++        f"{link}\n\n"
++        f"Este enlace expira en {settings.PASSWORD_RESET_EXPIRE_MINUTES} minutos.\n"
++        "Si no realizaste esta solicitud, ignora este mensaje."
++    )
++    message.set_content(plain_text)
++
++    html_text = f"""
++    <html>
++      <body style="font-family: Arial, sans-serif; color: #1f2937;">
++        <p>Hola <strong>{full_name}</strong>,</p>
++        <p>Recibimos una solicitud para restablecer tu contraseña.</p>
++        <p>Usa este enlace para definir una nueva contraseña:</p>
++        <p><a href="{link}">Restablecer contraseña</a></p>
++        <p>Este enlace expira en {settings.PASSWORD_RESET_EXPIRE_MINUTES} minutos.</p>
++        <p>Si no realizaste esta solicitud, ignora este mensaje.</p>
++      </body>
++    </html>
++    """
++    message.add_alternative(html_text, subtype="html")
++
++    try:
++        await asyncio.to_thread(_send_message_sync, message)
++    except Exception:
++        logger.exception("Fallo al enviar correo de recuperación a %s", to_email)
++        raise
++      HOSTNAME: 0.0.0.0
++      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3100}"
++      NEXT_PUBLIC_MINIO_URL: "${NEXT_PUBLIC_MINIO_URL:-http://localhost:9100}"
++      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3100}"
++      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3100}"
++      EMAIL_VERIFICATION_EXPIRE_HOURS: "${EMAIL_VERIFICATION_EXPIRE_HOURS}"
++      PASSWORD_RESET_EXPIRE_MINUTES: "${PASSWORD_RESET_EXPIRE_MINUTES}"
++      SMTP_HOST: "${SMTP_HOST}"
++      SMTP_PORT: "${SMTP_PORT}"
++      SMTP_USERNAME: "${SMTP_USERNAME}"
++      SMTP_PASSWORD: "${SMTP_PASSWORD}"
++      SMTP_ENCRYPTION: "${SMTP_ENCRYPTION}"
++      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL}"
++      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
++      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
++      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
++      TRUSTED_HOSTS: "${TRUSTED_HOSTS:-localhost,127.0.0.1,backend}"
++      SECURITY_HEADERS_ENABLED: "${SECURITY_HEADERS_ENABLED:-true}"
++      HSTS_ENABLED: "${HSTS_ENABLED:-false}"
++      HSTS_MAX_AGE: "${HSTS_MAX_AGE:-31536000}"
++      HOSTNAME: 0.0.0.0
++      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3100}"
++      NEXT_PUBLIC_MINIO_URL: "${NEXT_PUBLIC_MINIO_URL:-http://localhost:9100}"
++      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
++      MINIO_SECURE: "${MINIO_SECURE:-false}"
++      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-15}"
++      REFRESH_TOKEN_EXPIRE_DAYS: "${REFRESH_TOKEN_EXPIRE_DAYS:-7}"
++      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3100}"
++      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3100}"
++      EMAIL_VERIFICATION_EXPIRE_HOURS: "${EMAIL_VERIFICATION_EXPIRE_HOURS}"
++      PASSWORD_RESET_EXPIRE_MINUTES: "${PASSWORD_RESET_EXPIRE_MINUTES}"
++      SMTP_HOST: "${SMTP_HOST}"
++      SMTP_PORT: "${SMTP_PORT}"
++      SMTP_USERNAME: "${SMTP_USERNAME}"
++      SMTP_PASSWORD: "${SMTP_PASSWORD}"
++      SMTP_ENCRYPTION: "${SMTP_ENCRYPTION}"
++      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL}"
++      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
++      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
++      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
++      TRUSTED_HOSTS: "${TRUSTED_HOSTS:-*}"
++      SECURITY_HEADERS_ENABLED: "${SECURITY_HEADERS_ENABLED:-true}"
++      HSTS_ENABLED: "${HSTS_ENABLED:-false}"
++      HSTS_MAX_AGE: "${HSTS_MAX_AGE:-31536000}"
++# Diseño — Recuperación de contraseña gestionada por SUPER_ADMIN
++
++**Fecha:** 2026-05-23
++**Proyecto:** Casas de Campo
++
++## Objetivo
++Permitir que `SUPER_ADMIN` restablezca la contraseña de usuarios `CLIENT` y `ADMIN`, forzando cambio de contraseña al próximo inicio de sesión y cerrando sesiones activas.
++
++## Decisiones validadas
++1. Flujo híbrido (V1 sin email, V2 con enlace seguro en el futuro).
++2. En V1, el superadmin define una contraseña temporal personalizada.
++3. Al resetear, se deben cerrar todas las sesiones activas del usuario objetivo.
++
++## Alcance V1 (implementado)
++1. Nuevo endpoint para reset gestionado por superadmin.
++2. Nuevo endpoint para cambio de contraseña autenticado.
++3. Bandera de cumplimiento `must_change_password` en usuario.
++4. Auditoría de resets administrativos.
++5. UI en panel de superadmin para ejecutar reset.
++6. Redirección obligatoria a pantalla de cambio de contraseña cuando la bandera está activa.
++
++## Backend
++### Modelo de datos
++1. `users.must_change_password BOOLEAN NOT NULL DEFAULT false`.
++2. Tabla `admin_password_resets`:
++- `id`
++- `target_user_id`
++- `actor_user_id`
++- `reason`
++- `revoked_sessions`
++- `created_at`
++
++### Endpoints
++1. `POST /users/{id}/password-reset` (solo `SUPER_ADMIN`)
++- Entrada: `new_password`, `reason?`
++- Reglas:
++  - objetivo debe existir
++  - objetivo no puede ser `SUPER_ADMIN`
++  - contraseña temporal debe cumplir política
++- Efectos:
++  - actualiza `password_hash`
++  - setea `must_change_password=true`
++  - revoca `refresh_tokens` activos
++  - registra auditoría
++
++2. `POST /auth/change-password` (usuario autenticado)
++- Entrada: `current_password`, `new_password`
++- Reglas:
++  - contraseña actual debe coincidir
++  - nueva contraseña debe cumplir política
++  - nueva contraseña no puede ser igual a la actual
++- Efectos:
++  - actualiza hash
++  - setea `must_change_password=false`
++  - revoca `refresh_tokens` activos
++
++### Política de contraseña
++1. Mínimo 8 caracteres.
++2. Al menos una mayúscula.
++3. Al menos un número.
++
++## Frontend
++1. Panel `SUPER_ADMIN` en usuarios:
++- Acción `Reset pass` por fila (`CLIENT`/`ADMIN`).
++- Modal para contraseña temporal y motivo opcional.
++- Confirmación con cantidad de sesiones revocadas.
++
++2. Nueva ruta pública autenticada: `/change-password`.
++- Formulario para contraseña temporal + nueva contraseña.
++- Al éxito, redirección a dashboard según rol.
++
++3. Guardia en layouts de dashboard:
++- Si `must_change_password=true`, redirigir a `/change-password`.
++
++## Evolución V2
++Agregar reset por enlace de email expirado reutilizando:
++1. `must_change_password`
++2. auditoría administrativa
++3. semántica de invalidación de sesiones
++  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
++  async headers() {
++    return [
++      {
++        source: '/:path*',
++        headers: [
++          { key: 'X-Content-Type-Options', value: 'nosniff' },
++          { key: 'X-Frame-Options', value: 'DENY' },
++          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
++          {
++            key: 'Permissions-Policy',
++            value: 'camera=(), microphone=(), geolocation=()',
++          },
++        ],
++      },
++    ]
++  },
++  if (user.must_change_password) redirect('/change-password')
++  if (user.must_change_password) redirect('/change-password')
++'use client'
++
++import { useState, type InputHTMLAttributes } from 'react'
++import { useRouter } from 'next/navigation'
++import { useForm } from 'react-hook-form'
++import { zodResolver } from '@hookform/resolvers/zod'
++import { z } from 'zod'
++import { Eye, EyeOff, KeyRound } from 'lucide-react'
++import { Input } from '@/components/ui/input'
++import { Button } from '@/components/ui/button'
++import { useToast } from '@/components/ui/toast'
++import { apiFetch } from '@/lib/api-client'
++import { dashboardHomeForRole, type UserRole } from '@/lib/auth'
++
++const schema = z
++  .object({
++    current_password: z.string().min(1, 'Ingresa la contraseña temporal actual'),
++    new_password: z
++      .string()
++      .min(8, 'Mínimo 8 caracteres')
++      .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
++      .regex(/[0-9]/, 'Debe incluir al menos un número'),
++    confirm_password: z.string(),
++  })
++  .refine((values) => values.new_password === values.confirm_password, {
++    path: ['confirm_password'],
++    message: 'Las contraseñas no coinciden',
++  })
++
++type FormValues = z.infer<typeof schema>
++
++interface MeResponse {
++  role: UserRole
++}
++
++export function ChangePasswordForm() {
++  const router = useRouter()
++  const { toast } = useToast()
++  const [showCurrent, setShowCurrent] = useState(false)
++  const [showNew, setShowNew] = useState(false)
++  const [showConfirm, setShowConfirm] = useState(false)
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors, isSubmitting },
++  } = useForm<FormValues>({
++    resolver: zodResolver(schema),
++  })
++
++  async function onSubmit(values: FormValues) {
++    try {
++      await apiFetch('/api/auth/change-password', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          current_password: values.current_password,
++          new_password: values.new_password,
++        }),
++      })
++
++      const me = await apiFetch<MeResponse>('/api/auth/me')
++      toast('Contraseña actualizada correctamente', 'success')
++      router.push(dashboardHomeForRole(me.role))
++      router.refresh()
++    } catch (err) {
++      toast(err instanceof Error ? err.message : 'No se pudo actualizar la contraseña', 'error')
++    }
++  }
++
++  return (
++    <div
++      className="min-h-screen flex items-center justify-center px-4 py-10"
++      style={{ background: 'var(--surface-0)' }}
++    >
++      <div
++        className="w-full max-w-md rounded-2xl p-8"
++        style={{
++          background: 'var(--surface-1)',
++          border: '1px solid var(--border-mid)',
++        }}
++      >
++        <div className="mb-6">
++          <span
++            className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider mb-3"
++            style={{ color: 'var(--brand-accent)' }}
++          >
++            <KeyRound size={13} /> Seguridad de cuenta
++          </span>
++          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
++            Cambia tu contraseña
++          </h1>
++          <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
++            Tu contraseña fue restablecida por un super admin. Debes definir una nueva para continuar.
++          </p>
++        </div>
++
++        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
++          <PasswordField
++            id="current_password"
++            label="Contraseña temporal actual"
++            placeholder="Ingresa la contraseña temporal"
++            show={showCurrent}
++            onToggle={() => setShowCurrent(!showCurrent)}
++            error={errors.current_password?.message}
++            autoComplete="current-password"
++            {...register('current_password')}
++          />
++
++          <PasswordField
++            id="new_password"
++            label="Nueva contraseña"
++            placeholder="Mínimo 8 caracteres"
++            show={showNew}
++            onToggle={() => setShowNew(!showNew)}
++            error={errors.new_password?.message}
++            autoComplete="new-password"
++            {...register('new_password')}
++          />
++
++          <PasswordField
++            id="confirm_password"
++            label="Confirmar nueva contraseña"
++            placeholder="Repite la nueva contraseña"
++            show={showConfirm}
++            onToggle={() => setShowConfirm(!showConfirm)}
++            error={errors.confirm_password?.message}
++            autoComplete="new-password"
++            {...register('confirm_password')}
++          />
++
++          <Button type="submit" variant="primary" size="lg" className="w-full mt-2" loading={isSubmitting}>
++            Guardar nueva contraseña
++          </Button>
++        </form>
++      </div>
++    </div>
++  )
++}
++
++interface PasswordFieldProps extends InputHTMLAttributes<HTMLInputElement> {
++  id: string
++  label: string
++  placeholder: string
++  show: boolean
++  onToggle: () => void
++  error?: string
++}
++
++function PasswordField({
++  id,
++  label,
++  placeholder,
++  show,
++  onToggle,
++  error,
++  ...props
++}: PasswordFieldProps) {
++  return (
++    <div className="flex flex-col gap-1.5">
++      <label htmlFor={id} className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
++        {label}
++      </label>
++      <div className="relative">
++        <Input
++          id={id}
++          type={show ? 'text' : 'password'}
++          placeholder={placeholder}
++          className="pr-10"
++          error={error}
++          {...props}
++        />
++        <button
++          type="button"
++          onClick={onToggle}
++          className="absolute right-3 top-1/2 -translate-y-1/2"
++          style={{ color: 'var(--text-muted)' }}
++          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
++        >
++          {show ? <EyeOff size={16} /> : <Eye size={16} />}
++        </button>
++      </div>
++    </div>
++  )
++}
++import { redirect } from 'next/navigation'
++import { ChangePasswordForm } from './change-password-form'
++import { getMe, dashboardHomeForRole } from '@/lib/auth-server'
++
++export const dynamic = 'force-dynamic'
++
++export default async function ChangePasswordPage() {
++  const user = await getMe()
++  if (!user) {
++    redirect('/login?redirect=/change-password')
++  }
++
++  if (!user.must_change_password) {
++    redirect(dashboardHomeForRole(user.role))
++  }
++
++  return <ChangePasswordForm />
++}
++'use client'
++
++import { useState } from 'react'
++import Link from 'next/link'
++import { useForm } from 'react-hook-form'
++import { zodResolver } from '@hookform/resolvers/zod'
++import { z } from 'zod'
++import { Input } from '@/components/ui/input'
++import { Button } from '@/components/ui/button'
++import { Logo } from '@/components/logo'
++
++const schema = z.object({
++  email: z.string().email('Email inválido'),
++})
++
++type FormValues = z.infer<typeof schema>
++
++export default function ForgotPasswordPage() {
++  const [submitted, setSubmitted] = useState(false)
++  const [networkError, setNetworkError] = useState<string | null>(null)
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors, isSubmitting },
++  } = useForm<FormValues>({
++    resolver: zodResolver(schema),
++  })
++
++  async function onSubmit(values: FormValues) {
++    setNetworkError(null)
++    try {
++      await fetch('/api/auth/forgot-password', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'include',
++        body: JSON.stringify({ email: values.email }),
++      })
++      setSubmitted(true)
++    } catch {
++      setNetworkError('Error de conexión. Intenta nuevamente.')
++    }
++  }
++
++  return (
++    <div
++      className="min-h-screen flex items-center justify-center px-4 py-12"
++      style={{ background: 'var(--surface-0)' }}
++    >
++      <div className="w-full max-w-sm">
++        <div className="flex justify-center mb-8">
++          <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
++            <Logo variant="full" size={32} tone="onForest" />
++          </Link>
++        </div>
++
++        <div
++          className="rounded-2xl p-8"
++          style={{
++            background: 'var(--surface-1)',
++            border: '1px solid var(--border-mid)',
++          }}
++        >
++          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
++            Recuperar contraseña
++          </h1>
++          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
++            Te enviaremos un enlace para restablecer tu contraseña.
++          </p>
++
++          {submitted ? (
++            <div
++              className="rounded-lg px-4 py-3 text-sm"
++              style={{
++                background: 'rgba(91, 168, 110, 0.12)',
++                border: '1px solid rgba(91, 168, 110, 0.3)',
++                color: 'var(--text-primary)',
++              }}
++            >
++              Si el correo existe en nuestra plataforma, enviaremos un enlace de recuperación.
++            </div>
++          ) : (
++            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
++              <Input
++                id="email"
++                label="Correo electrónico"
++                type="email"
++                placeholder="tu@email.com"
++                error={errors.email?.message}
++                autoComplete="email"
++                {...register('email')}
++              />
++
++              {networkError && (
++                <p className="text-xs" style={{ color: 'var(--color-error)' }}>
++                  {networkError}
++                </p>
++              )}
++
++              <Button type="submit" variant="primary" size="lg" className="w-full mt-1" loading={isSubmitting}>
++                Enviar enlace
++              </Button>
++            </form>
++          )}
++
++          <p className="text-sm text-center mt-5" style={{ color: 'var(--text-tertiary)' }}>
++            <Link
++              href="/login"
++              className="font-medium transition-opacity hover:opacity-80"
++              style={{ color: 'var(--brand-accent)' }}
++            >
++              Volver a iniciar sesión
++            </Link>
++          </p>
++        </div>
++      </div>
++    </div>
++  )
++}
++import { useEffect, useState } from 'react'
++  const [needsVerification, setNeedsVerification] = useState(false)
++  const [resendLoading, setResendLoading] = useState(false)
++  const [resendFeedback, setResendFeedback] = useState<{
++    type: 'success' | 'error'
++    message: string
++  } | null>(null)
++  const [shouldShowVerifyHint, setShouldShowVerifyHint] = useState(false)
++    setValue,
++    watch,
++  const currentEmail = watch('email')
++
++  useEffect(() => {
++    const params = new URLSearchParams(window.location.search)
++    const verifyHint = params.get('verify') === '1'
++    const email = params.get('email') ?? ''
++    setShouldShowVerifyHint(verifyHint)
++    if (email) {
++      setValue('email', email)
++    }
++  }, [setValue])
++
++    setNeedsVerification(false)
++    setResendFeedback(null)
++        const err = await res.json().catch(() => ({} as { detail?: string; code?: string }))
++        setNeedsVerification((err as { code?: string }).code === 'EMAIL_NOT_VERIFIED')
++      setNeedsVerification(false)
++      setResendFeedback(null)
++
++      if (user.must_change_password) {
++        router.push('/change-password')
++        router.refresh()
++        return
++      }
++  async function handleResendVerification() {
++    setResendFeedback(null)
++
++    if (!currentEmail) {
++      setResendFeedback({
++        type: 'error',
++        message: 'Ingresa tu correo electrónico para reenviar la verificación.',
++      })
++      return
++    }
++
++    setResendLoading(true)
++    try {
++      const res = await fetch('/api/auth/resend-verification', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'include',
++        body: JSON.stringify({ email: currentEmail }),
++      })
++
++      if (!res.ok) {
++        const err = await res.json().catch(() => ({} as { detail?: string }))
++        setResendFeedback({
++          type: 'error',
++          message: err.detail || 'No pudimos reenviar el correo de verificación.',
++        })
++        return
++      }
++
++      setResendFeedback({
++        type: 'success',
++        message: 'Te enviamos un nuevo correo de verificación. Revisa tu bandeja.',
++      })
++    } catch {
++      setResendFeedback({
++        type: 'error',
++        message: 'Error de conexión al reenviar verificación.',
++      })
++    } finally {
++      setResendLoading(false)
++    }
++  }
++
++          {shouldShowVerifyHint && (
++            <div
++              className="rounded-lg px-4 py-3 mb-4 text-sm"
++              style={{
++                background: 'rgba(232, 169, 58, 0.12)',
++                border: '1px solid rgba(232, 169, 58, 0.3)',
++                color: 'var(--brand-warm)',
++              }}
++            >
++              Registro exitoso. Verifica tu correo antes de iniciar sesión.
++            </div>
++          )}
++
++          {needsVerification && (
++            <div
++              className="rounded-lg px-4 py-3 mb-5 text-sm"
++              style={{
++                background: 'rgba(140, 180, 200, 0.12)',
++                border: '1px solid rgba(140, 180, 200, 0.3)',
++                color: 'var(--text-primary)',
++              }}
++            >
++              <p>Tu cuenta todavía no está verificada.</p>
++              <button
++                type="button"
++                onClick={handleResendVerification}
++                disabled={resendLoading}
++                className="mt-2 underline disabled:opacity-60"
++                style={{ color: 'var(--brand-accent)' }}
++              >
++                {resendLoading ? 'Reenviando…' : 'Reenviar correo de verificación'}
++              </button>
++              {resendFeedback && (
++                <p
++                  className="mt-2"
++                  style={{
++                    color:
++                      resendFeedback.type === 'success'
++                        ? 'var(--color-success)'
++                        : 'var(--color-error)',
++                  }}
++                >
++                  {resendFeedback.message}
++                </p>
++              )}
++            </div>
++          )}
++
++            <div className="text-right -mt-1">
++              <Link
++                href="/forgot-password"
++                className="text-xs font-medium transition-opacity hover:opacity-80"
++                style={{ color: 'var(--brand-accent)' }}
++              >
++                ¿Olvidaste tu contraseña?
++              </Link>
++            </div>
++
++      router.push(`/login?verify=1&email=${encodeURIComponent(payload.email)}`)
++'use client'
++
++import { useEffect, useState } from 'react'
++import Link from 'next/link'
++import { useForm } from 'react-hook-form'
++import { zodResolver } from '@hookform/resolvers/zod'
++import { z } from 'zod'
++import { Eye, EyeOff } from 'lucide-react'
++import { Input } from '@/components/ui/input'
++import { Button } from '@/components/ui/button'
++import { Logo } from '@/components/logo'
++
++const schema = z
++  .object({
++    new_password: z
++      .string()
++      .min(8, 'Mínimo 8 caracteres')
++      .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
++      .regex(/[0-9]/, 'Debe incluir al menos un número'),
++    confirm_password: z.string(),
++  })
++  .refine((values) => values.new_password === values.confirm_password, {
++    path: ['confirm_password'],
++    message: 'Las contraseñas no coinciden',
++  })
++
++type FormValues = z.infer<typeof schema>
++
++export default function ResetPasswordPage() {
++  const [token, setToken] = useState<string | null>(null)
++  const [hasCheckedToken, setHasCheckedToken] = useState(false)
++  const [serverError, setServerError] = useState<string | null>(null)
++  const [completed, setCompleted] = useState(false)
++  const [showNew, setShowNew] = useState(false)
++  const [showConfirm, setShowConfirm] = useState(false)
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors, isSubmitting },
++  } = useForm<FormValues>({
++    resolver: zodResolver(schema),
++  })
++
++  useEffect(() => {
++    const parsedToken = new URLSearchParams(window.location.search).get('token')
++    setToken(parsedToken)
++    setHasCheckedToken(true)
++  }, [])
++
++  async function onSubmit(values: FormValues) {
++    setServerError(null)
++    if (!token) {
++      setServerError('El enlace de recuperación es inválido o está incompleto.')
++      return
++    }
++
++    try {
++      const res = await fetch('/api/auth/reset-password', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'include',
++        body: JSON.stringify({
++          token,
++          new_password: values.new_password,
++        }),
++      })
++
++      if (!res.ok) {
++        const err = await res.json().catch(() => ({} as { detail?: string }))
++        setServerError(err.detail || 'No se pudo restablecer la contraseña.')
++        return
++      }
++
++      setCompleted(true)
++    } catch {
++      setServerError('Error de conexión. Intenta nuevamente.')
++    }
++  }
++
++  return (
++    <div
++      className="min-h-screen flex items-center justify-center px-4 py-12"
++      style={{ background: 'var(--surface-0)' }}
++    >
++      <div className="w-full max-w-sm">
++        <div className="flex justify-center mb-8">
++          <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
++            <Logo variant="full" size={32} tone="onForest" />
++          </Link>
++        </div>
++
++        <div
++          className="rounded-2xl p-8"
++          style={{
++            background: 'var(--surface-1)',
++            border: '1px solid var(--border-mid)',
++          }}
++        >
++          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
++            Nueva contraseña
++          </h1>
++          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
++            Define una contraseña nueva para tu cuenta.
++          </p>
++
++          {!hasCheckedToken ? (
++            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
++              Cargando enlace de recuperación...
++            </p>
++          ) : completed ? (
++            <div
++              className="rounded-lg px-4 py-3 text-sm"
++              style={{
++                background: 'rgba(91, 168, 110, 0.12)',
++                border: '1px solid rgba(91, 168, 110, 0.3)',
++              color: 'var(--text-primary)',
++              }}
++            >
++              Contraseña actualizada correctamente. Ya puedes iniciar sesión.
++            </div>
++          ) : !token ? (
++            <div
++              className="rounded-lg px-4 py-3 text-sm"
++              style={{
++                background: 'rgba(220, 80, 80, 0.1)',
++                border: '1px solid rgba(220, 80, 80, 0.3)',
++                color: 'var(--color-error)',
++              }}
++            >
++              El enlace de recuperación es inválido o está incompleto.
++            </div>
++          ) : (
++            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
++              <div className="flex flex-col gap-1.5">
++                <label htmlFor="new_password" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
++                  Nueva contraseña
++                </label>
++                <div className="relative">
++                  <Input
++                    id="new_password"
++                    type={showNew ? 'text' : 'password'}
++                    placeholder="Mínimo 8 caracteres"
++                    className="pr-10"
++                    error={errors.new_password?.message}
++                    autoComplete="new-password"
++                    {...register('new_password')}
++                  />
++                  <button
++                    type="button"
++                    onClick={() => setShowNew(!showNew)}
++                    className="absolute right-3 top-1/2 -translate-y-1/2"
++                    style={{ color: 'var(--text-muted)' }}
++                    aria-label={showNew ? 'Ocultar contraseña' : 'Mostrar contraseña'}
++                  >
++                    {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
++                  </button>
++                </div>
++              </div>
++
++              <div className="flex flex-col gap-1.5">
++                <label htmlFor="confirm_password" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
++                  Confirmar contraseña
++                </label>
++                <div className="relative">
++                  <Input
++                    id="confirm_password"
++                    type={showConfirm ? 'text' : 'password'}
++                    placeholder="Repite la nueva contraseña"
++                    className="pr-10"
++                    error={errors.confirm_password?.message}
++                    autoComplete="new-password"
++                    {...register('confirm_password')}
++                  />
++                  <button
++                    type="button"
++                    onClick={() => setShowConfirm(!showConfirm)}
++                    className="absolute right-3 top-1/2 -translate-y-1/2"
++                    style={{ color: 'var(--text-muted)' }}
++                    aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
++                  >
++                    {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
++                  </button>
++                </div>
++              </div>
++
++              {serverError && (
++                <p className="text-xs" style={{ color: 'var(--color-error)' }}>
++                  {serverError}
++                </p>
++              )}
++
++              <Button type="submit" variant="primary" size="lg" className="w-full mt-1" loading={isSubmitting}>
++                Guardar nueva contraseña
++              </Button>
++            </form>
++          )}
++
++          <p className="text-sm text-center mt-5" style={{ color: 'var(--text-tertiary)' }}>
++            <Link
++              href={completed ? '/login' : '/forgot-password'}
++              className="font-medium transition-opacity hover:opacity-80"
++              style={{ color: 'var(--brand-accent)' }}
++            >
++              {completed ? 'Ir a iniciar sesión' : 'Solicitar un nuevo enlace'}
++            </Link>
++          </p>
++        </div>
++      </div>
++    </div>
++  )
++}
++'use client'
++
++import { useEffect, useState } from 'react'
++import Link from 'next/link'
++import { Logo } from '@/components/logo'
++
++type VerificationState = 'loading' | 'success' | 'error'
++
++export default function VerifyEmailPage() {
++  const [state, setState] = useState<VerificationState>('loading')
++  const [message, setMessage] = useState('Verificando tu cuenta...')
++
++  useEffect(() => {
++    const token = new URLSearchParams(window.location.search).get('token')
++    if (!token) {
++      setState('error')
++      setMessage('El enlace de verificación es inválido o está incompleto.')
++      return
++    }
++
++    let cancelled = false
++
++    async function verify() {
++      try {
++        const res = await fetch('/api/auth/verify-email', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'include',
++          body: JSON.stringify({ token }),
++        })
++
++        if (!res.ok) {
++          const err = await res.json().catch(() => ({} as { detail?: string }))
++          if (cancelled) return
++          setState('error')
++          setMessage(
++            err.detail || 'No se pudo verificar la cuenta. Solicita un nuevo enlace.',
++          )
++          return
++        }
++
++        if (cancelled) return
++        setState('success')
++        setMessage('Tu cuenta fue verificada correctamente. Ya puedes iniciar sesión.')
++      } catch {
++        if (cancelled) return
++        setState('error')
++        setMessage('Error de conexión al verificar la cuenta. Intenta nuevamente.')
++      }
++    }
++
++    verify()
++    return () => {
++      cancelled = true
++    }
++  }, [])
++
++  return (
++    <div
++      className="min-h-screen flex items-center justify-center px-4 py-12"
++      style={{ background: 'var(--surface-0)' }}
++    >
++      <div className="w-full max-w-sm">
++        <div className="flex justify-center mb-8">
++          <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
++            <Logo variant="full" size={32} tone="onForest" />
++          </Link>
++        </div>
++
++        <div
++          className="rounded-2xl p-8"
++          style={{
++            background: 'var(--surface-1)',
++            border: '1px solid var(--border-mid)',
++          }}
++        >
++          <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
++            Verificación de correo
++          </h1>
++
++          <p
++            className="text-sm"
++            style={{
++              color:
++                state === 'success'
++                  ? 'var(--color-success)'
++                  : state === 'error'
++                    ? 'var(--color-error)'
++                    : 'var(--text-secondary)',
++            }}
++          >
++            {message}
++          </p>
++
++          <div className="mt-6 flex flex-col gap-3">
++            <Link
++              href="/login"
++              className="btn-primary text-base px-6 py-3 rounded-lg w-full text-center inline-flex items-center justify-center"
++            >
++              {state === 'success' ? 'Ir a iniciar sesión' : 'Volver al login'}
++            </Link>
++
++            {state === 'error' && (
++              <p className="text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
++                Si el enlace expiró, intenta iniciar sesión y usa el reenvío de verificación.
++              </p>
++            )}
++          </div>
++        </div>
++      </div>
++    </div>
++  )
++}
++import { useMemo, useState, type ElementType } from 'react'
++import * as Dialog from '@radix-ui/react-dialog'
++  UserCheck,
++  UserX,
++  KeyRound,
++  X,
++interface PasswordResetResponse {
++  revoked_sessions: number
++}
++
++const ROLE_ICON: Record<UserRole, ElementType> = {
++const STATUS_FILTERS: { value: 'ALL' | 'ACTIVE' | 'INACTIVE'; label: string }[] = [
++  { value: 'ALL', label: 'Todos los estados' },
++  { value: 'ACTIVE', label: 'Activas' },
++  { value: 'INACTIVE', label: 'Inactivas' },
++]
++
++function validateTemporaryPassword(password: string): string | null {
++  if (password.length < 8) return 'La contraseña temporal debe tener al menos 8 caracteres'
++  if (!/[A-Z]/.test(password)) return 'La contraseña temporal debe incluir al menos una mayúscula'
++  if (!/[0-9]/.test(password)) return 'La contraseña temporal debe incluir al menos un número'
++  return null
++}
++
++  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
++  const [resetTarget, setResetTarget] = useState<UserType | null>(null)
++  const [resetPassword, setResetPassword] = useState('')
++  const [resetReason, setResetReason] = useState('')
++  const [resetLoading, setResetLoading] = useState(false)
++      if (statusFilter === 'ACTIVE' && !u.is_active) return false
++      if (statusFilter === 'INACTIVE' && u.is_active) return false
++  }, [items, filter, statusFilter, query])
++  const statusCounts = useMemo(() => {
++    return {
++      active: items.filter((u) => u.is_active).length,
++      inactive: items.filter((u) => !u.is_active).length,
++    }
++  }, [items])
++
++  async function handleStatusChange(user: UserType, nextIsActive: boolean) {
++    if (!nextIsActive) {
++      const confirmed = window.confirm(
++        `¿Deshabilitar la cuenta de ${user.full_name}? Se cerrarán sus sesiones activas.`,
++      )
++      if (!confirmed) return
++    }
++
++    setLoadingId(user.id)
++    try {
++      await apiFetch(`/api/users/${user.id}/status`, {
++        method: 'PATCH',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ is_active: nextIsActive }),
++      })
++      toast(
++        nextIsActive
++          ? `Cuenta habilitada para ${user.full_name}`
++          : `Cuenta deshabilitada para ${user.full_name}`,
++        'success',
++      )
++      mutate()
++    } catch (err) {
++      toast(err instanceof Error ? err.message : 'Error al actualizar el estado de la cuenta', 'error')
++    } finally {
++      setLoadingId(null)
++    }
++  }
++
++  function openPasswordReset(user: UserType) {
++    setResetTarget(user)
++    setResetPassword('')
++    setResetReason('')
++  }
++
++  function closePasswordReset(force = false) {
++    if (resetLoading && !force) return
++    setResetTarget(null)
++    setResetPassword('')
++    setResetReason('')
++  }
++
++  async function handlePasswordReset() {
++    if (!resetTarget) return
++
++    const passwordError = validateTemporaryPassword(resetPassword)
++    if (passwordError) {
++      toast(passwordError, 'warning')
++      return
++    }
++
++    setResetLoading(true)
++    try {
++      const result = await apiFetch<PasswordResetResponse>(`/api/users/${resetTarget.id}/password-reset`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          new_password: resetPassword,
++          reason: resetReason.trim() || null,
++        }),
++      })
++
++      toast(
++        `Contraseña restablecida para ${resetTarget.full_name}. Sesiones cerradas: ${result.revoked_sessions}`,
++        'success',
++      )
++      closePasswordReset(true)
++      mutate()
++    } catch (err) {
++      toast(err instanceof Error ? err.message : 'No se pudo restablecer la contraseña', 'error')
++    } finally {
++      setResetLoading(false)
++    }
++  }
++
++    <Dialog.Root
++      open={Boolean(resetTarget)}
++      onOpenChange={(open) => {
++        if (!open) closePasswordReset()
++      }}
++    >
++      <div>
++                administradores, {counts.SUPER_ADMIN} super admin.
++                {' '}Activas: {statusCounts.active}, inactivas: {statusCounts.inactive}
++              'Gestiona roles, estado de cuenta y restablecimiento de contraseñas'
++          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
++            El botón <strong>Habilitar/Deshabilitar</strong> aparece en usuarios CLIENTE y ADMIN.
++            {' '}
++            El botón <strong>Restablecer</strong> aparece en usuarios CLIENTE y ADMIN.
++            {' '}Las cuentas SUPER_ADMIN se cambian desde su propia sesión.
++          </p>
++        <div className="flex flex-wrap gap-2">
++          {STATUS_FILTERS.map((f) => {
++            const isActive = statusFilter === f.value
++            const count =
++              f.value === 'ALL'
++                ? counts.ALL
++                : f.value === 'ACTIVE'
++                  ? statusCounts.active
++                  : statusCounts.inactive
++            return (
++              <button
++                key={f.value}
++                onClick={() => setStatusFilter(f.value)}
++                className="text-sm px-3 py-1.5 rounded-full font-medium transition-all duration-150 inline-flex items-center gap-2"
++                style={{
++                  background: isActive ? 'var(--surface-3)' : 'var(--surface-2)',
++                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
++                  border: `1px solid ${isActive ? 'var(--border-mid)' : 'var(--border-soft)'}`,
++                }}
++              >
++                {f.label}
++                <span
++                  className="font-mono text-[10px] tabular-nums"
++                  style={{ color: isActive ? 'var(--brand-accent)' : 'var(--text-muted)' }}
++                >
++                  {count}
++                </span>
++              </button>
++            )
++          })}
++        </div>
++
++        {query && (
++          <button
++            type="button"
++            onClick={() => setQuery('')}
++            className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors hover:bg-[var(--surface-3)]"
++            style={{
++              background: 'var(--surface-2)',
++              color: 'var(--text-secondary)',
++              border: '1px solid var(--border-soft)',
++            }}
++          >
++            Limpiar búsqueda
++          </button>
++        )}
++              : `Sin resultados con los filtros "${
++                }" y "${
++                  STATUS_FILTERS.find((f) => f.value === statusFilter)?.label
++                  className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--surface-2)] ${
++                    !u.is_active ? 'opacity-75' : ''
++                  }`}
++                    {!u.is_active && (
++                      <p
++                        className="text-[11px] font-medium mt-1"
++                        style={{ color: 'var(--color-error)' }}
++                      >
++                        Cuenta deshabilitada
++                      </p>
++                    )}
++                    {u.must_change_password && (
++                      <p
++                        className="text-[11px] font-medium mt-1"
++                        style={{ color: 'var(--brand-warm)' }}
++                      >
++                        Cambio de contraseña pendiente
++                      </p>
++                    )}
++                  <span
++                    className="hidden sm:inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
++                    style={{
++                      background: u.is_active ? 'rgba(91, 138, 71, 0.16)' : 'rgba(217, 99, 78, 0.16)',
++                      color: u.is_active ? 'var(--brand-primary)' : 'var(--color-error)',
++                      border: `1px solid ${
++                        u.is_active ? 'rgba(91, 138, 71, 0.28)' : 'rgba(217, 99, 78, 0.28)'
++                      }`,
++                    }}
++                  >
++                    {u.is_active ? 'Activa' : 'Inactiva'}
++                  </span>
++
++                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
++                    {u.role !== 'SUPER_ADMIN' && (
++                      <button
++                        type="button"
++                        onClick={() => handleStatusChange(u, !u.is_active)}
++                        disabled={loadingId === u.id || resetLoading}
++                        className="text-xs px-2.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
++                        title={u.is_active ? 'Deshabilitar cuenta' : 'Habilitar cuenta'}
++                        style={{
++                          background: u.is_active ? 'rgba(217, 99, 78, 0.12)' : 'rgba(91, 138, 71, 0.16)',
++                          color: u.is_active ? 'var(--color-error)' : 'var(--brand-primary)',
++                          border: `1px solid ${
++                            u.is_active ? 'rgba(217, 99, 78, 0.28)' : 'rgba(91, 138, 71, 0.28)'
++                          }`,
++                        }}
++                      >
++                        {u.is_active ? <UserX size={12} /> : <UserCheck size={12} />}
++                        {u.is_active ? 'Deshabilitar' : 'Habilitar'}
++                      </button>
++                    )}
++                    {u.role !== 'SUPER_ADMIN' && (
++                      <RoleMenu
++                        currentRole={u.role}
++                        disabled={loadingId === u.id || resetLoading}
++                        onChange={(role) => handleRoleChange(u.id, role)}
++                      />
++                    )}
++                    <button
++                      type="button"
++                      onClick={() => openPasswordReset(u)}
++                      disabled={u.role === 'SUPER_ADMIN' || loadingId === u.id || resetLoading}
++                      className="text-xs px-2.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors hover:bg-[var(--surface-3)] disabled:opacity-60 disabled:cursor-not-allowed"
++                      title={
++                        u.role === 'SUPER_ADMIN'
++                          ? 'Por seguridad, la contraseña del SUPER_ADMIN se cambia desde su sesión'
++                          : 'Restablecer contraseña temporal'
++                      }
++                      style={{
++                        background: 'var(--surface-2)',
++                        color: 'var(--text-secondary)',
++                        border: '1px solid var(--border-soft)',
++                      }}
++                      <KeyRound
++                        size={12}
++                        style={{ color: u.role === 'SUPER_ADMIN' ? 'var(--text-muted)' : 'var(--brand-accent)' }}
++                      />
++                      {u.role === 'SUPER_ADMIN' ? 'Protegido' : 'Restablecer'}
++                    </button>
++                  </div>
++      </div>
++
++      <Dialog.Portal>
++        <Dialog.Overlay
++          className="fixed inset-0 z-[60] backdrop-blur-sm data-[state=open]:animate-[fadeIn_180ms_ease-out]"
++          style={{ background: 'rgba(0,0,0,0.75)' }}
++        />
++        <Dialog.Content
++          className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 w-[min(92vw,540px)] rounded-2xl p-6 outline-none data-[state=open]:animate-[fadeIn_180ms_ease-out]"
++          style={{
++            background: 'var(--surface-1)',
++            border: '1px solid var(--border-mid)',
++          }}
++        >
++          <Dialog.Title className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
++            Restablecer contraseña
++          </Dialog.Title>
++          <Dialog.Description className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
++            Define una contraseña temporal para{' '}
++            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
++              {resetTarget?.full_name}
++            </span>
++            . Al guardar, se cerrarán todas sus sesiones activas y deberá cambiarla al iniciar sesión.
++          </Dialog.Description>
++
++          <div className="mt-5 space-y-4">
++            <div className="flex flex-col gap-1.5">
++              <label
++                htmlFor="reset-password"
++                className="text-sm font-medium"
++                style={{ color: 'var(--text-secondary)' }}
++              >
++                Contraseña temporal
++              </label>
++              <input
++                id="reset-password"
++                type="password"
++                className="input-field"
++                placeholder="Ejemplo: Temp2026"
++                value={resetPassword}
++                onChange={(event) => setResetPassword(event.target.value)}
++                autoComplete="new-password"
++              />
++            </div>
++
++            <div className="flex flex-col gap-1.5">
++              <label
++                htmlFor="reset-reason"
++                className="text-sm font-medium"
++                style={{ color: 'var(--text-secondary)' }}
++              >
++                Motivo (opcional)
++              </label>
++              <textarea
++                id="reset-reason"
++                rows={3}
++                className="input-field resize-y"
++                placeholder="Ejemplo: Solicitud del usuario por olvido"
++                value={resetReason}
++                onChange={(event) => setResetReason(event.target.value)}
++              />
++            </div>
++          </div>
++
++          <div className="mt-6 flex flex-wrap justify-end gap-2">
++            <button
++              type="button"
++              onClick={() => closePasswordReset()}
++              disabled={resetLoading}
++              className="btn-ghost text-sm px-4 py-2 rounded-lg disabled:opacity-50"
++            >
++              Cancelar
++            </button>
++            <button
++              type="button"
++              onClick={handlePasswordReset}
++              disabled={resetLoading}
++              className="btn-primary text-sm px-4 py-2 rounded-lg disabled:opacity-50 inline-flex items-center gap-2"
++            >
++              {resetLoading ? 'Restableciendo…' : 'Restablecer contraseña'}
++            </button>
++          </div>
++
++          <Dialog.Close
++            onClick={() => closePasswordReset()}
++            disabled={resetLoading}
++            className="absolute top-3 right-3 p-1.5 rounded-md transition-colors hover:bg-[var(--surface-2)] disabled:opacity-50"
++            aria-label="Cerrar"
++            style={{ color: 'var(--text-muted)' }}
++          >
++            <X size={16} />
++          </Dialog.Close>
++        </Dialog.Content>
++      </Dialog.Portal>
++    </Dialog.Root>
++  if (user.must_change_password) redirect('/change-password')
++  email_verified: boolean
++  must_change_password: boolean
++  email_verified: boolean
++  must_change_password: boolean

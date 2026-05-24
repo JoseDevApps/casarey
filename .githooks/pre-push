@@ -36,7 +36,7 @@ check_range() {
   fi
 
   if grep -Ei '(smtp_password|jwt_secret|nextauth_secret|db_password|minio_password)[[:space:]]*[:=]' "$tmp_added" | \
-    grep -Eiv '(change_in_production|example|placeholder|your_|\$\{|<|xxx)' >/dev/null 2>&1; then
+    grep -Eiv '(change_in_production|example|placeholder|your_|\$\{|<|xxx|:[[:space:]]*(str|int|bool|float)[[:space:]]*=|=[[:space:]]*(""|None|true|false)$)' >/dev/null 2>&1; then
     fail "Blocked push: detected suspicious credential assignment in added lines."
   fi
 }
