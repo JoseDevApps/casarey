@@ -111,7 +111,7 @@ export default function BannersPage() {
       )}
 
       {error && (
-        <div className="rounded-xl p-6 text-sm text-center" style={{ background: 'rgba(220,80,80,0.08)', border: '1px solid rgba(220,80,80,0.2)', color: 'var(--color-error)' }}>
+        <div className="rounded-xl p-6 text-sm text-center" style={{ background: 'rgba(186,26,26,0.08)', border: '1px solid rgba(186,26,26,0.22)', color: 'var(--color-error)' }}>
           Error al cargar banners.
         </div>
       )}

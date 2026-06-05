@@ -29,30 +29,30 @@ const TONE: Record<
   { bg: string; ring: string; iconBg: string; iconColor: string; icon: typeof CheckCircle2 }
 > = {
   success: {
-    bg: 'rgba(91, 168, 110, 0.10)',
-    ring: 'rgba(91, 168, 110, 0.32)',
-    iconBg: 'rgba(91, 168, 110, 0.18)',
+    bg: 'rgba(79, 97, 68, 0.10)',
+    ring: 'rgba(79, 97, 68, 0.26)',
+    iconBg: 'rgba(79, 97, 68, 0.16)',
     iconColor: 'var(--color-success)',
     icon: CheckCircle2,
   },
   error: {
-    bg: 'rgba(217, 99, 78, 0.10)',
-    ring: 'rgba(217, 99, 78, 0.34)',
-    iconBg: 'rgba(217, 99, 78, 0.20)',
+    bg: 'rgba(186, 26, 26, 0.08)',
+    ring: 'rgba(186, 26, 26, 0.28)',
+    iconBg: 'rgba(186, 26, 26, 0.14)',
     iconColor: 'var(--color-error)',
     icon: AlertCircle,
   },
   info: {
-    bg: 'rgba(140, 180, 200, 0.10)',
-    ring: 'rgba(140, 180, 200, 0.30)',
-    iconBg: 'rgba(140, 180, 200, 0.18)',
+    bg: 'rgba(103, 122, 92, 0.10)',
+    ring: 'rgba(103, 122, 92, 0.24)',
+    iconBg: 'rgba(103, 122, 92, 0.15)',
     iconColor: 'var(--color-info)',
     icon: Info,
   },
   warning: {
-    bg: 'rgba(232, 169, 58, 0.10)',
-    ring: 'rgba(232, 169, 58, 0.32)',
-    iconBg: 'rgba(232, 169, 58, 0.20)',
+    bg: 'rgba(153, 70, 42, 0.09)',
+    ring: 'rgba(153, 70, 42, 0.26)',
+    iconBg: 'rgba(153, 70, 42, 0.14)',
     iconColor: 'var(--brand-warm)',
     icon: AlertTriangle,
   },
@@ -97,7 +97,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 backgroundImage: `linear-gradient(${tone.bg}, ${tone.bg})`,
                 border: `1px solid ${tone.ring}`,
                 boxShadow:
-                  '0 12px 32px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(244, 236, 216, 0.04)',
+                  '0 14px 34px -24px rgba(171, 54, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.72)',
               }}
             >
               {/* Icon disc — same signature as the brand chip */}

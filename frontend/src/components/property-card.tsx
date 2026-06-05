@@ -81,7 +81,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
             className="btn-forest text-center text-sm mt-2"
             style={{
               background: 'var(--brand-primary)',
-              color: 'var(--text-primary)',
+              color: 'var(--color-bone, rgb(255,255,255))',
               fontWeight: 600,
               borderRadius: 'var(--radius-md)',
               padding: '8px 16px',

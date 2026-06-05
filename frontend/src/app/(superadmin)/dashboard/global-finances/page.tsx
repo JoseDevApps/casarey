@@ -104,12 +104,12 @@ export default function GlobalFinancesPage() {
           className="rounded-2xl p-5 flex items-center gap-4"
           style={{
             background: 'var(--surface-4)',
-            border: '1px solid rgba(199, 90, 58, 0.18)',
+            border: '1px solid rgba(167, 52, 0, 0.18)',
           }}
         >
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(199, 90, 58, 0.18)' }}
+            style={{ background: 'rgba(167, 52, 0, 0.14)' }}
           >
             <TrendingUp size={18} style={{ color: 'var(--brand-accent)' }} />
           </div>
@@ -205,8 +205,8 @@ export default function GlobalFinancesPage() {
         <div
           className="rounded-xl p-6 text-sm text-center"
           style={{
-            background: 'rgba(217, 99, 78, 0.08)',
-            border: '1px solid rgba(217, 99, 78, 0.25)',
+            background: 'rgba(186, 26, 26, 0.08)',
+            border: '1px solid rgba(186, 26, 26, 0.22)',
             color: 'var(--color-error)',
           }}
         >

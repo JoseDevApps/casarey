@@ -68,14 +68,7 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
                 }}
               />
             )}
-            {/* Dark overlay for text legibility */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.75) 100%)',
-              }}
-            />
+            <div className="absolute inset-0 media-hero-scrim" />
           </div>
         )
       })}
@@ -83,31 +76,24 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
       {/* Content of active slide */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center py-24">
         <div
-          className="inline-flex items-center gap-2 text-sm font-medium px-4 py-1.5 rounded-full mb-8"
-          style={{
-            background: 'rgba(224, 155, 107, 0.15)',
-            color: 'var(--brand-accent)',
-            border: '1px solid rgba(224, 155, 107, 0.25)',
-          }}
+          className="media-hero-chip inline-flex items-center gap-2 text-sm font-medium px-4 py-1.5 rounded-full mb-8"
         >
           <span
             className="w-2 h-2 rounded-full inline-block animate-pulse"
-            style={{ background: 'var(--brand-accent)' }}
+            style={{ background: 'var(--inverse-primary, #ffb59c)' }}
           />
           Reservas disponibles
         </div>
 
         <h1
-          className="text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.05] mb-6"
-          style={{ color: 'var(--text-primary)' }}
+          className="media-hero-title text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.05] mb-6"
         >
           {banners[index].title}
         </h1>
 
         {banners[index].subtitle && (
           <p
-            className="text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
-            style={{ color: 'var(--text-secondary)' }}
+            className="media-hero-copy text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
           >
             {banners[index].subtitle}
           </p>
@@ -117,14 +103,18 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
           <Link
             href="/properties"
             className="inline-flex items-center gap-2 text-base font-semibold px-8 py-4 rounded-xl transition-all duration-150"
-            style={{ background: 'var(--brand-accent)', color: 'var(--color-bone, rgb(249,244,230))' }}
+            style={{
+              background: 'var(--brand-accent)',
+              color: 'var(--color-bone, rgb(249,244,230))',
+              boxShadow: '0 16px 34px -20px rgba(0, 0, 0, 0.82)',
+            }}
           >
             Ver cabañas
             <ArrowRight size={18} />
           </Link>
           <Link
             href="/login"
-            className="btn-ghost inline-flex items-center gap-2 text-base font-medium px-8 py-4 rounded-xl"
+            className="media-hero-secondary inline-flex items-center gap-2 text-base font-medium px-8 py-4 rounded-xl transition-all duration-150"
           >
             Iniciar sesión
           </Link>
@@ -140,7 +130,7 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
             className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full items-center justify-center transition-opacity hover:opacity-100 opacity-70"
             style={{
               background: 'rgba(0,0,0,0.45)',
-              color: 'var(--text-primary)',
+              color: 'var(--inverse-on-surface, #f2f0ed)',
               border: '1px solid rgba(255,255,255,0.15)',
             }}
           >
@@ -152,7 +142,7 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
             className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full items-center justify-center transition-opacity hover:opacity-100 opacity-70"
             style={{
               background: 'rgba(0,0,0,0.45)',
-              color: 'var(--text-primary)',
+              color: 'var(--inverse-on-surface, #f2f0ed)',
               border: '1px solid rgba(255,255,255,0.15)',
             }}
           >

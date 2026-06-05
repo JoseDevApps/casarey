@@ -2,62 +2,63 @@
 
 /* =====================================================
    DESIGN SYSTEM — Cabañas Coroico
-   Paleta tomada del logo digital: forest · cream · terracotta · sun · ink.
-   El tema es oscuro porque el dashboard vive a media tarde con luz cálida —
-   no en un terminal estéril. Los surfaces se mueven entre ink y forest
-   profundo (no negro frío); el texto usa la cream del isologo; los acentos
-   se reservan para acción (terra) y alegría puntual (sun).
+   Yungas Morning Radiance: superficies claras, crema cálida, arcilla,
+   naranja solar y verde hoja. El sistema se aleja del bosque oscuro y
+   busca una sensación luminosa, premium y respirable para viajeros y admins.
    ===================================================== */
 
 @layer base {
   :root {
-    /* --- Brand primitives (matching Cabañas Coroico logo) --- */
-    --color-forest:   31  61  46;    /* #1F3D2E — primario / techos del logo */
-    --color-cream:    244 236 216;   /* #F4ECD8 — papel viejo / texto */
-    --color-terra:    199 90  58;    /* #C75A3A — pincelada terracotta */
-    --color-sun:      232 169 58;    /* #E8A93A — sol-tarde, calor */
-    --color-ink:      20  39  29;    /* #14271D — verde-tinta más oscuro que forest */
-    --color-bone:     249 244 230;   /* #F9F4E6 — variante hueso del cream */
+    /* --- Brand primitives from DESIGN.md --- */
+    --color-forest:   rgb(79, 97, 68);     /* #4F6144 — hoja madura / acciones secundarias */
+    --color-cream:    rgb(249, 244, 230);  /* #F9F4E6 — crema cálida */
+    --color-sandy:    rgb(242, 232, 213);  /* #F2E8D5 — arena / bordes suaves */
+    --color-terra:    rgb(224, 155, 107);  /* #E09B6B — arcilla suave */
+    --color-sun:      rgb(240, 100, 47);   /* #F0642F — naranja solar para momentos de énfasis */
+    --color-ink:      rgb(45, 36, 30);     /* #2D241E — espresso */
+    --color-bone:     rgb(255, 255, 255);  /* #FFFFFF — texto sobre acciones oscuras */
+    --color-charcoal: rgb(55, 65, 81);     /* #374151 — texto funcional */
 
-    /* --- Surfaces (dark tones, forest territory) ---
-       Cada paso ~6-8% de luminancia. Whisper-quiet — el squint test debe
-       seguir mostrando jerarquía sin que ningún borde grite. */
-    --surface-0: rgb(8, 18, 13);          /* canvas — más oscuro que ink */
-    --surface-1: rgb(20, 39, 29);         /* cards — ink puro */
-    --surface-2: rgb(28, 52, 39);         /* elevated — entre ink y forest */
-    --surface-3: rgb(36, 65, 49);         /* dropdowns / popovers */
-    --surface-4: rgb(31, 61, 46);         /* CTA / forest del logo */
+    /* --- Surfaces (tonal layers, light morning) --- */
+    --surface-0: rgb(251, 249, 245);        /* canvas #FBF9F5 */
+    --surface-1: rgb(255, 255, 255);        /* cards #FFFFFF */
+    --surface-2: rgb(245, 243, 239);        /* hover / low container #F5F3EF */
+    --surface-3: rgb(239, 238, 234);        /* popovers #EFEEEA */
+    --surface-4: rgb(242, 232, 213);        /* CTA bands #F2E8D5 */
+    --inverse-surface: rgb(48, 49, 46);
+    --inverse-on-surface: rgb(242, 240, 237);
+    --inverse-primary: rgb(255, 181, 156);
 
-    /* --- Borders (cream rebajada — no white frío) --- */
-    --border-soft:   rgba(244, 236, 216, 0.07);
-    --border-mid:    rgba(244, 236, 216, 0.13);
-    --border-strong: rgba(244, 236, 216, 0.22);
-    --border-focus:  rgba(199, 90, 58, 0.55);   /* terra ring */
+    /* --- Borders (outline from the palette, softened) --- */
+    --border-soft:   rgba(141, 113, 104, 0.14);
+    --border-mid:    rgba(141, 113, 104, 0.24);
+    --border-strong: rgba(141, 113, 104, 0.38);
+    --border-focus:  rgba(171, 54, 0, 0.56);
 
-    /* --- Text hierarchy (cream rebajada por niveles) --- */
-    --text-primary:   rgb(244, 236, 216);
-    --text-secondary: rgba(244, 236, 216, 0.74);
-    --text-tertiary:  rgba(244, 236, 216, 0.50);
-    --text-muted:     rgba(244, 236, 216, 0.30);
+    /* --- Text hierarchy (espresso + warm variants) --- */
+    --text-primary:   rgb(45, 36, 30);
+    --text-secondary: rgba(89, 65, 57, 0.86);
+    --text-tertiary:  rgba(89, 65, 57, 0.64);
+    --text-muted:     rgba(89, 65, 57, 0.44);
 
     /* --- Brand colors --- */
-    --brand-primary:        rgb(31, 61, 46);    /* forest */
-    --brand-primary-hover:  rgb(40, 78, 58);
-    --brand-accent:         rgb(199, 90, 58);   /* terracotta */
-    --brand-accent-hover:   rgb(214, 100, 65);
-    --brand-warm:           rgb(232, 169, 58);  /* sun — solo realces */
-    --brand-warm-soft:      rgba(232, 169, 58, 0.16);
+    --brand-primary:        rgb(79, 97, 68);     /* leaf muted */
+    --brand-primary-hover:  rgb(58, 76, 49);     /* darker leaf for contrast */
+    --brand-accent:         rgb(167, 52, 0);     /* accessible burnt orange */
+    --brand-accent-hover:   rgb(203, 74, 21);
+    --brand-warm:           rgb(240, 100, 47);   /* sun-baked orange */
+    --brand-warm-soft:      rgba(240, 100, 47, 0.14);
 
-    /* --- Semantic (afinadas para fondo cálido, no cyan frío) --- */
-    --color-success: rgb(91, 168, 110);
-    --color-warning: rgb(232, 169, 58);    /* el sun de la marca */
-    --color-error:   rgb(217, 99, 78);
-    --color-info:    rgb(140, 180, 200);
+    /* --- Semantic, tuned for light warm surfaces --- */
+    --color-success: rgb(79, 97, 68);
+    --color-warning: rgb(153, 70, 42);
+    --color-error:   rgb(186, 26, 26);
+    --color-info:    rgb(103, 122, 92);
 
     /* --- Inputs --- */
-    --input-bg:           rgb(14, 28, 21);
-    --input-border:       rgba(244, 236, 216, 0.14);
-    --input-border-focus: rgba(199, 90, 58, 0.55);
+    --input-bg:           rgb(245, 243, 239);
+    --input-border:       rgba(141, 113, 104, 0.28);
+    --input-border-focus: rgba(171, 54, 0, 0.56);
 
     /* --- Spacing (4px base) --- */
     --space-1: 4px;
@@ -77,7 +78,7 @@
     --radius-full: 9999px;
 
     /* --- Type families (asignadas por next/font, ver layout.tsx) --- */
-    --font-serif: var(--font-fraunces), 'Fraunces', Georgia, serif;
+    --font-serif: var(--font-literata), 'Literata', Georgia, serif;
     --font-sans:  var(--font-dm-sans), 'DM Sans', -apple-system, system-ui, sans-serif;
     --font-mono:  var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
   }
@@ -105,11 +106,11 @@
     min-height: 100vh;
   }
 
-  /* Encabezados con Fraunces — editorial, ligero contraste de tracking */
+  /* Encabezados con Literata — editorial, cálidos y legibles */
   h1, h2, h3, h4 {
     font-family: var(--font-serif);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   /* Datos tabulares y monoespaciada */
@@ -117,15 +118,15 @@
     font-family: var(--font-mono);
   }
 
-  /* Scrollbar — terra suave en lugar de gris */
+  /* Scrollbar — naranja solar suave en lugar de gris frío */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--surface-0); }
-  ::-webkit-scrollbar-thumb { background: rgba(199, 90, 58, 0.25); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(199, 90, 58, 0.45); }
+  ::-webkit-scrollbar-thumb { background: rgba(171, 54, 0, 0.22); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(171, 54, 0, 0.38); }
 
   /* Selección de texto cálida */
   ::selection {
-    background: rgba(232, 169, 58, 0.32);
+    background: rgba(254, 149, 114, 0.34);
     color: var(--text-primary);
   }
 }
@@ -179,19 +180,20 @@
     background: var(--surface-1);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius-lg);
+    box-shadow: 0 16px 36px -30px rgba(171, 54, 0, 0.34);
   }
 
   .card-elevated {
     background: var(--surface-2);
     border: 1px solid var(--border-mid);
     border-radius: var(--radius-lg);
+    box-shadow: 0 18px 40px -32px rgba(171, 54, 0, 0.28);
   }
 
-  /* Botón principal: terracotta. Hover sube 1px (alegría tenue),
-     active baja 1px (presión sentida), focus-visible ring terra. */
+  /* Botón principal: naranja tostado accesible sobre superficies claras. */
   .btn-primary {
     background: var(--brand-accent);
-    color: var(--color-bone, rgb(249, 244, 230));
+    color: var(--color-bone, rgb(255, 255, 255));
     font-weight: 600;
     border-radius: var(--radius-md);
     padding: 10px 20px;
@@ -199,14 +201,14 @@
     cursor: pointer;
     border: none;
   }
-  .btn-primary:hover { background: var(--brand-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(199, 90, 58, 0.45); }
+  .btn-primary:hover { background: var(--brand-accent-hover); transform: translateY(-1px); box-shadow: 0 8px 18px -10px rgba(171, 54, 0, 0.42); }
   .btn-primary:active { transform: translateY(0); box-shadow: none; }
   .btn-primary:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .btn-forest {
     background: var(--brand-primary);
-    color: var(--text-primary);
+    color: var(--color-bone, rgb(255, 255, 255));
     font-weight: 600;
     border-radius: var(--radius-md);
     padding: 10px 20px;
@@ -214,7 +216,7 @@
     cursor: pointer;
     border: none;
   }
-  .btn-forest:hover { background: var(--brand-primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(31, 61, 46, 0.6); }
+  .btn-forest:hover { background: var(--brand-primary-hover); transform: translateY(-1px); box-shadow: 0 8px 18px -10px rgba(79, 97, 68, 0.38); }
   .btn-forest:active { transform: translateY(0); box-shadow: none; }
   .btn-forest:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 
@@ -243,6 +245,71 @@
   }
   .btn-sun:hover { filter: brightness(1.06); }
 
+  .btn-destructive {
+    background: var(--color-error);
+    color: var(--color-bone, rgb(255, 255, 255));
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    padding: 10px 20px;
+    transition: filter 150ms ease-out, transform 120ms ease-out, box-shadow 150ms ease-out;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-destructive:hover { filter: brightness(0.94); transform: translateY(-1px); box-shadow: 0 8px 18px -10px rgba(186, 26, 26, 0.38); }
+  .btn-destructive:active { transform: translateY(0); box-shadow: none; }
+  .btn-destructive:focus-visible { outline: 2px solid rgba(186, 26, 26, 0.42); outline-offset: 2px; }
+
+  .media-hero-scrim {
+    background:
+      radial-gradient(
+        ellipse 74% 54% at 50% 54%,
+        rgba(25, 18, 12, 0.72) 0%,
+        rgba(25, 18, 12, 0.46) 48%,
+        rgba(25, 18, 12, 0.18) 76%,
+        rgba(25, 18, 12, 0.08) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(25, 18, 12, 0.42) 0%,
+        rgba(25, 18, 12, 0.18) 32%,
+        rgba(25, 18, 12, 0.72) 100%
+      );
+  }
+
+  .media-hero-title {
+    color: var(--inverse-on-surface, rgb(242, 240, 237));
+    text-shadow:
+      0 2px 18px rgba(0, 0, 0, 0.72),
+      0 1px 3px rgba(0, 0, 0, 0.82);
+  }
+
+  .media-hero-copy {
+    color: rgba(242, 240, 237, 0.92);
+    text-shadow:
+      0 1px 10px rgba(0, 0, 0, 0.72),
+      0 1px 2px rgba(0, 0, 0, 0.78);
+  }
+
+  .media-hero-chip {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--inverse-on-surface, rgb(242, 240, 237));
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 10px 28px -18px rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(12px);
+  }
+
+  .media-hero-secondary {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--inverse-on-surface, rgb(242, 240, 237));
+    border: 1px solid rgba(255, 255, 255, 0.30);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.74);
+    backdrop-filter: blur(12px);
+  }
+  .media-hero-secondary:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.42);
+  }
+
   .input-field {
     background: var(--input-bg);
     border: 1px solid var(--input-border);
@@ -257,36 +324,36 @@
   }
   .input-field:focus {
     border-color: var(--input-border-focus);
-    box-shadow: 0 0 0 3px rgba(199, 90, 58, 0.12);
+    box-shadow: 0 0 0 3px rgba(171, 54, 0, 0.11);
   }
   .input-field::placeholder { color: var(--text-muted); }
 
-  /* Badges — todos sobre tonos cálidos para no romper el clima cromático */
+  /* Badges — cálidos y orgánicos, sin tonos digitales fríos */
   .badge-pending {
-    background: rgba(232, 169, 58, 0.15);
-    color: var(--brand-warm);
-    border: 1px solid rgba(232, 169, 58, 0.32);
+    background: rgba(153, 70, 42, 0.12);
+    color: var(--color-warning);
+    border: 1px solid rgba(153, 70, 42, 0.26);
     padding: 2px 10px; border-radius: var(--radius-full);
     font-size: 12px; font-weight: 500;
   }
   .badge-approved {
-    background: rgba(91, 168, 110, 0.15);
+    background: rgba(79, 97, 68, 0.13);
     color: var(--color-success);
-    border: 1px solid rgba(91, 168, 110, 0.32);
+    border: 1px solid rgba(79, 97, 68, 0.26);
     padding: 2px 10px; border-radius: var(--radius-full);
     font-size: 12px; font-weight: 500;
   }
   .badge-confirmed {
-    background: rgba(199, 90, 58, 0.16);
+    background: rgba(167, 52, 0, 0.12);
     color: var(--brand-accent);
-    border: 1px solid rgba(199, 90, 58, 0.32);
+    border: 1px solid rgba(167, 52, 0, 0.26);
     padding: 2px 10px; border-radius: var(--radius-full);
     font-size: 12px; font-weight: 500;
   }
   .badge-rejected {
-    background: rgba(217, 99, 78, 0.15);
+    background: rgba(186, 26, 26, 0.10);
     color: var(--color-error);
-    border: 1px solid rgba(217, 99, 78, 0.32);
+    border: 1px solid rgba(186, 26, 26, 0.24);
     padding: 2px 10px; border-radius: var(--radius-full);
     font-size: 12px; font-weight: 500;
   }
@@ -324,8 +391,8 @@
 
 /* Highlight ring — destacar un elemento recién creado por unos segundos */
 @keyframes pulseAccent {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 169, 58, 0); }
-  50%      { box-shadow: 0 0 0 6px rgba(232, 169, 58, 0.18); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 100, 47, 0); }
+  50%      { box-shadow: 0 0 0 6px rgba(240, 100, 47, 0.18); }
 }
 
 /* Modal entrance — Radix Dialog */
@@ -336,7 +403,7 @@
 
 /* Skeleton shimmer — overlay para no chocar con el background del padre.
    Aplicar como `className="skeleton"` en placeholders de carga.
-   El brillo cream tenue pasa de izquierda a derecha cada 1.8s. */
+   El brillo arcilla tenue pasa de izquierda a derecha cada 1.8s. */
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
@@ -353,7 +420,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(244, 236, 216, 0.06) 50%,
+    rgba(171, 54, 0, 0.06) 50%,
     transparent 100%
   );
   animation: shimmer 1.8s ease-in-out infinite;

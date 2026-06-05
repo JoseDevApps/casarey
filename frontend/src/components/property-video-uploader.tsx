@@ -139,8 +139,8 @@ export function PropertyVideoUploader({
         <div
           className="rounded-xl p-5 flex items-center gap-3"
           style={{
-            background: 'rgba(232, 169, 58, 0.08)',
-            border: '1px solid rgba(232, 169, 58, 0.25)',
+            background: 'rgba(153, 70, 42, 0.08)',
+            border: '1px solid rgba(153, 70, 42, 0.22)',
           }}
         >
           <Loader2
@@ -165,8 +165,8 @@ export function PropertyVideoUploader({
         <div
           className="rounded-xl p-5 flex items-start gap-3"
           style={{
-            background: 'rgba(217, 99, 78, 0.08)',
-            border: '1px solid rgba(217, 99, 78, 0.25)',
+            background: 'rgba(186, 26, 26, 0.08)',
+            border: '1px solid rgba(186, 26, 26, 0.22)',
           }}
         >
           <AlertCircle
@@ -218,8 +218,8 @@ export function PropertyVideoUploader({
             <span
               className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-full"
               style={{
-                background: 'rgba(8, 18, 13, 0.85)',
-                color: 'var(--brand-warm)',
+                background: 'rgba(48, 49, 46, 0.86)',
+                color: 'var(--inverse-primary, var(--brand-warm))',
                 backdropFilter: 'blur(4px)',
               }}
             >

@@ -56,7 +56,7 @@ export default async function LandingPage() {
          className="relative min-h-screen flex items-center justify-center overflow-hidden"
          style={{
            background:
-             'linear-gradient(160deg, var(--surface-0) 0%, oklch(96% 0.02 155) 50%, var(--surface-0) 100%)',
+             'linear-gradient(160deg, var(--surface-0) 0%, var(--surface-4) 54%, var(--surface-1) 100%)',
          }}
        >
 
@@ -69,12 +69,12 @@ export default async function LandingPage() {
           }}
         />
 
-        {/* Radial glow */}
+        {/* Warm morning wash */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(29,71,52,0.4) 0%, transparent 70%)',
+              'linear-gradient(180deg, rgba(240,100,47,0.08) 0%, transparent 58%)',
           }}
         />
 
@@ -224,7 +224,7 @@ export default async function LandingPage() {
                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
                    style={{ background: 'var(--brand-primary)' }}
                  >
-                   <item.icon size={22} style={{ color: 'var(--brand-accent)' }} />
+                   <item.icon size={22} style={{ color: 'var(--color-bone, rgb(255,255,255))' }} />
                  </div>
  
                  <h3

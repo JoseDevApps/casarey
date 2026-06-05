@@ -370,8 +370,8 @@ export default function UsersPage() {
         <div
           className="rounded-xl p-6 text-sm text-center"
           style={{
-            background: 'rgba(217, 99, 78, 0.08)',
-            border: '1px solid rgba(217, 99, 78, 0.25)',
+            background: 'rgba(186, 26, 26, 0.08)',
+            border: '1px solid rgba(186, 26, 26, 0.22)',
             color: 'var(--color-error)',
           }}
         >
@@ -487,16 +487,16 @@ export default function UsersPage() {
                     style={{
                       background:
                         u.role === 'SUPER_ADMIN'
-                          ? 'rgba(232, 169, 58, 0.14)'
+                          ? 'rgba(240, 100, 47, 0.14)'
                           : u.role === 'ADMIN'
-                            ? 'rgba(199, 90, 58, 0.14)'
+                            ? 'rgba(167, 52, 0, 0.12)'
                             : 'var(--surface-2)',
                       color: ROLE_COLOR[u.role],
                       border: `1px solid ${
                         u.role === 'SUPER_ADMIN'
-                          ? 'rgba(232, 169, 58, 0.3)'
+                          ? 'rgba(240, 100, 47, 0.28)'
                           : u.role === 'ADMIN'
-                            ? 'rgba(199, 90, 58, 0.3)'
+                            ? 'rgba(167, 52, 0, 0.26)'
                             : 'var(--border-soft)'
                       }`,
                     }}
@@ -508,10 +508,10 @@ export default function UsersPage() {
                   <span
                     className="hidden sm:inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
                     style={{
-                      background: u.is_active ? 'rgba(91, 138, 71, 0.16)' : 'rgba(217, 99, 78, 0.16)',
+                      background: u.is_active ? 'rgba(79, 97, 68, 0.13)' : 'rgba(186, 26, 26, 0.10)',
                       color: u.is_active ? 'var(--brand-primary)' : 'var(--color-error)',
                       border: `1px solid ${
-                        u.is_active ? 'rgba(91, 138, 71, 0.28)' : 'rgba(217, 99, 78, 0.28)'
+                        u.is_active ? 'rgba(79, 97, 68, 0.24)' : 'rgba(186, 26, 26, 0.24)'
                       }`,
                     }}
                   >
@@ -535,10 +535,10 @@ export default function UsersPage() {
                         className="text-xs px-2.5 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         title={u.is_active ? 'Deshabilitar cuenta' : 'Habilitar cuenta'}
                         style={{
-                          background: u.is_active ? 'rgba(217, 99, 78, 0.12)' : 'rgba(91, 138, 71, 0.16)',
+                          background: u.is_active ? 'rgba(186, 26, 26, 0.08)' : 'rgba(79, 97, 68, 0.13)',
                           color: u.is_active ? 'var(--color-error)' : 'var(--brand-primary)',
                           border: `1px solid ${
-                            u.is_active ? 'rgba(217, 99, 78, 0.28)' : 'rgba(91, 138, 71, 0.28)'
+                            u.is_active ? 'rgba(186, 26, 26, 0.24)' : 'rgba(79, 97, 68, 0.24)'
                           }`,
                         }}
                       >

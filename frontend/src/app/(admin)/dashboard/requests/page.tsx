@@ -28,6 +28,8 @@ const STATUS_FILTERS: { value: ReservationStatus | 'ALL'; label: string }[] = [
   { value: 'CANCELLED', label: 'Canceladas' },
 ]
 
+type ReservationAction = 'approve' | 'reject' | 'confirm-payment'
+
 function fetcher(url: string) {
   return apiFetch<Paginated<Reservation>>(url)
 }
@@ -83,9 +85,9 @@ function VoucherPanel({ reservationId }: { reservationId: string }) {
       <div
         className="rounded-xl mt-3 mb-1 p-3 text-xs flex items-center gap-2"
         style={{
-          background: 'rgba(224, 183, 107, 0.1)',
+          background: 'rgba(153, 70, 42, 0.08)',
           color: 'var(--color-warning)',
-          border: '1px solid rgba(224,183,107,0.25)',
+          border: '1px solid rgba(153,70,42,0.22)',
         }}
       >
         <Receipt size={14} />
@@ -122,13 +124,24 @@ export default function AdminRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'ALL'>('ALL')
   const [expandedGuests, setExpandedGuests] = useState<Set<string>>(new Set())
   const [discounts, setDiscounts] = useState<Record<string, string>>({})
+  const [actionInFlight, setActionInFlight] = useState<{
+    reservationId: string
+    type: ReservationAction
+  } | null>(null)
   const { toast } = useToast()
 
   const queryParam = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
   const { data, error, isLoading, mutate } = useSWR(`/api/reservations${queryParam}`, fetcher)
   const reservations = data?.items
 
+  function isActionLoading(id: string, type?: ReservationAction) {
+    if (!actionInFlight || actionInFlight.reservationId !== id) return false
+    return type ? actionInFlight.type === type : true
+  }
+
   async function handleApprove(id: string) {
+    if (actionInFlight) return
+    setActionInFlight({ reservationId: id, type: 'approve' })
     try {
       const discountStr = discounts[id]?.trim() || '0'
       const discount_amount = Math.max(0, parseFloat(discountStr) || 0)
@@ -138,29 +151,43 @@ export default function AdminRequestsPage() {
         body: JSON.stringify({ discount_amount }),
       })
       toast('Reserva aprobada', 'success')
-      mutate()
+      await mutate()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error', 'error')
+    } finally {
+      setActionInFlight(null)
     }
   }
 
   async function handleReject(id: string) {
+    if (actionInFlight) return
+    const confirmed = window.confirm('¿Rechazar esta reserva? El cliente será notificado por correo.')
+    if (!confirmed) return
+    setActionInFlight({ reservationId: id, type: 'reject' })
     try {
       await apiFetch(`/api/reservations/${id}/reject`, { method: 'PATCH' })
       toast('Reserva rechazada', 'info')
-      mutate()
+      await mutate()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error', 'error')
+    } finally {
+      setActionInFlight(null)
     }
   }
 
   async function handleConfirmPayment(id: string) {
+    if (actionInFlight) return
+    const confirmed = window.confirm('¿Confirmar el pago? La reserva quedará activa y el cliente será notificado.')
+    if (!confirmed) return
+    setActionInFlight({ reservationId: id, type: 'confirm-payment' })
     try {
       await apiFetch(`/api/reservations/${id}/confirm-payment`, { method: 'PATCH' })
       toast('Pago confirmado — reserva activa', 'success')
-      mutate()
+      await mutate()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error', 'error')
+    } finally {
+      setActionInFlight(null)
     }
   }
 
@@ -185,6 +212,7 @@ export default function AdminRequestsPage() {
           <button
             key={f.value}
             onClick={() => setStatusFilter(f.value)}
+            aria-pressed={statusFilter === f.value}
             className="text-sm px-4 py-1.5 rounded-full font-medium transition-all duration-100"
             style={{
               background: statusFilter === f.value ? 'var(--brand-primary)' : 'var(--surface-2)',
@@ -206,7 +234,7 @@ export default function AdminRequestsPage() {
       )}
 
       {error && (
-        <div className="rounded-xl p-6 text-sm text-center" style={{ background: 'rgba(220,80,80,0.08)', border: '1px solid rgba(220,80,80,0.2)', color: 'var(--color-error)' }}>
+        <div className="rounded-xl p-6 text-sm text-center" style={{ background: 'rgba(186,26,26,0.08)', border: '1px solid rgba(186,26,26,0.22)', color: 'var(--color-error)' }}>
           Error al cargar reservas.
         </div>
       )}
@@ -268,6 +296,7 @@ export default function AdminRequestsPage() {
                           placeholder="0"
                           className="input-field w-24 text-sm"
                           value={discounts[res.id] ?? ''}
+                          disabled={isActionLoading(res.id)}
                           onChange={(e) =>
                             setDiscounts((prev) => ({ ...prev, [res.id]: e.target.value }))
                           }
@@ -285,16 +314,34 @@ export default function AdminRequestsPage() {
                         })()}
                       </div>
                     </div>
-                    <Button variant="forest" size="sm" onClick={() => handleApprove(res.id)}>
+                    <Button
+                      variant="forest"
+                      size="sm"
+                      onClick={() => handleApprove(res.id)}
+                      loading={isActionLoading(res.id, 'approve')}
+                      disabled={isActionLoading(res.id)}
+                    >
                       <CheckCircle2 size={14} /> Aprobar
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleReject(res.id)}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleReject(res.id)}
+                      loading={isActionLoading(res.id, 'reject')}
+                      disabled={isActionLoading(res.id)}
+                    >
                       <XCircle size={14} /> Rechazar
                     </Button>
                   </>
                 )}
                 {res.status === 'APPROVED_WAITING_PAYMENT' && (
-                  <Button variant="primary" size="sm" onClick={() => handleConfirmPayment(res.id)}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleConfirmPayment(res.id)}
+                    loading={isActionLoading(res.id, 'confirm-payment')}
+                    disabled={isActionLoading(res.id)}
+                  >
                     <CreditCard size={14} /> Confirmar Pago
                   </Button>
                 )}

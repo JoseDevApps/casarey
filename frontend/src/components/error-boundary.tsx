@@ -38,9 +38,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
         >
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(239, 68, 68, 0.1)' }}
+            style={{ background: 'rgba(186, 26, 26, 0.08)' }}
           >
-            <AlertTriangle size={22} style={{ color: 'var(--color-error, #ef4444)' }} />
+            <AlertTriangle size={22} style={{ color: 'var(--color-error, #ba1a1a)' }} />
           </div>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>

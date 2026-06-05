@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
-            <Logo variant="full" size={32} tone="onForest" />
+            <Logo variant="full" size={32} />
           </Link>
         </div>
 
@@ -112,8 +112,8 @@ export default function ResetPasswordPage() {
             <div
               className="rounded-lg px-4 py-3 text-sm"
               style={{
-                background: 'rgba(91, 168, 110, 0.12)',
-                border: '1px solid rgba(91, 168, 110, 0.3)',
+                background: 'rgba(79, 97, 68, 0.10)',
+                border: '1px solid rgba(79, 97, 68, 0.24)',
               color: 'var(--text-primary)',
               }}
             >
@@ -123,8 +123,8 @@ export default function ResetPasswordPage() {
             <div
               className="rounded-lg px-4 py-3 text-sm"
               style={{
-                background: 'rgba(220, 80, 80, 0.1)',
-                border: '1px solid rgba(220, 80, 80, 0.3)',
+                background: 'rgba(186, 26, 26, 0.08)',
+                border: '1px solid rgba(186, 26, 26, 0.24)',
                 color: 'var(--color-error)',
               }}
             >

@@ -28,8 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       primary: 'btn-primary',
       forest: 'btn-forest',
       ghost: 'btn-ghost',
-      destructive:
-        'bg-red-900/50 text-red-300 border border-red-800/40 hover:bg-red-900/80 rounded-lg px-4 py-2',
+      destructive: 'btn-destructive',
     }
     const sizes = {
       sm: 'text-sm px-3 py-1.5 rounded-md',

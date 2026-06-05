@@ -63,7 +63,7 @@ export default function VerifyEmailPage() {
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
-            <Logo variant="full" size={32} tone="onForest" />
+            <Logo variant="full" size={32} />
           </Link>
         </div>
 

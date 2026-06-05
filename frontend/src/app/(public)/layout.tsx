@@ -1,12 +1,7 @@
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
-import { UserMenu } from '@/components/user-menu'
-import {
-  getMe,
-  dashboardHomeForRole,
-  initialsOf,
-  roleLabel,
-} from '@/lib/auth-server'
+import { AuthHeaderSlot } from '@/components/auth-header-slot'
+import { getMe } from '@/lib/auth-server'
 
 export default async function PublicLayout({
   children,
@@ -20,8 +15,8 @@ export default async function PublicLayout({
       <header
         className="sticky top-0 z-40"
         style={{
-          background: 'rgba(8, 18, 13, 0.92)',
-          backdropFilter: 'blur(12px)',
+          background: 'rgba(255, 255, 255, 0.82)',
+          backdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--border-soft)',
         }}
       >
@@ -32,7 +27,7 @@ export default async function PublicLayout({
             className="flex items-center transition-opacity hover:opacity-80"
             aria-label="Cabañas Coroico — inicio"
           >
-            <Logo variant="full" size={28} tone="onForest" />
+            <Logo variant="full" size={28} />
           </Link>
 
           {/* Nav links */}
@@ -55,36 +50,7 @@ export default async function PublicLayout({
 
           {/* Right slot — auth or user nav */}
           <div className="flex items-center gap-2">
-            {me ? (
-              <UserMenu
-                fullName={me.full_name}
-                email={me.email}
-                initials={initialsOf(me.full_name)}
-                roleLabel={roleLabel(me.role)}
-                dashboardHref={dashboardHomeForRole(me.role)}
-                placement="header"
-              />
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="hidden sm:inline-flex items-center text-sm px-3 py-2 rounded-lg font-medium transition-colors hover:bg-[var(--surface-2)]"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  Iniciar sesión
-                </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center text-sm px-4 py-2 rounded-lg font-semibold transition-colors"
-                  style={{
-                    background: 'var(--brand-accent)',
-                    color: 'var(--color-bone, rgb(249,244,230))',
-                  }}
-                >
-                  Crear cuenta
-                </Link>
-              </>
-            )}
+            <AuthHeaderSlot initialUser={me} />
           </div>
         </nav>
       </header>

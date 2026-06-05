@@ -196,7 +196,7 @@ export default function ClientReservationDetailPage({ params }: Props) {
             style={{
               background: 'var(--surface-1)',
               border: highlightFresh
-                ? '1px solid rgba(232, 169, 58, 0.5)'
+                ? '1px solid rgba(240, 100, 47, 0.46)'
                 : '1px solid var(--border-soft)',
               animation: highlightFresh
                 ? 'pulseAccent 1.4s ease-in-out 2'
@@ -412,8 +412,8 @@ export default function ClientReservationDetailPage({ params }: Props) {
                   <div
                     className="rounded-xl p-4 mb-4"
                     style={{
-                      background: 'rgba(52, 168, 83, 0.08)',
-                      border: '1px solid rgba(52,168,83,0.25)',
+                      background: 'rgba(79, 97, 68, 0.10)',
+                      border: '1px solid rgba(79,97,68,0.24)',
                     }}
                   >
                     <p className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--color-success)' }}>

@@ -1,198 +1,157 @@
-# Cabañas Coroico — design system
+# Cabanas Coroico — design system
 
-> **Read this before any UI change.** Every decision below is rooted in
-> the digitalized brand logo. Skipping this file = the next change drifts
-> back to defaults.
+> **Read this before any UI change.** The active direction comes from
+> `C:/Users/CENTER INFORMATIC/Downloads/DESIGN.md`: **Yungas Morning Radiance**.
 
 ## Direction
 
-Editorial-rural. Cabaña en los Yungas a media tarde con luz cálida —
-NO terminal estéril, NO SaaS azul, NO mobile-app vibrante.
+Sun-drenched Yungas morning. The product should feel bright, calm, premium, and
+human: warm mountain air, cream surfaces, clay edges, leaf accents, and a clear
+orange action language.
 
-The dark theme lives in **forest territory**, not generic "almost-black".
-The brand is the brand: same palette and signature in public landing,
-client dashboard, admin tools, and super-admin panel.
+The previous dark forest theme is no longer the default. Public pages,
+client dashboards, admin tools, and super-admin panels all use the light system.
+Use dark surfaces only for functional overlays such as image viewers and modal
+scrims.
 
-## Palette (semantic tokens, never raw hex in components)
+## Palette
 
-Tokens are defined in `src/app/globals.css` as CSS variables.
+Tokens are defined in `frontend/src/app/globals.css`.
 
 | Role | Token | Hex | Use |
 |---|---|---|---|
-| Canvas | `--surface-0` | `rgb(8, 18, 13)` | Page background |
-| Card | `--surface-1` | `rgb(20, 39, 29)` | Cards, sidebar, default surface |
-| Elevated | `--surface-2` | `rgb(28, 52, 39)` | Hover surfaces, secondary cards |
-| Popover | `--surface-3` | `rgb(36, 65, 49)` | Dropdowns, modals, tooltips |
-| CTA band | `--surface-4` | `rgb(31, 61, 46)` | Forest CTA areas |
-| Text primary | `--text-primary` | `#F4ECD8` (cream) | Headings, body |
-| Text secondary | `--text-secondary` | `cream / 74%` | Supporting text |
-| Text tertiary | `--text-tertiary` | `cream / 50%` | Metadata, labels |
-| Text muted | `--text-muted` | `cream / 30%` | Disabled, placeholders |
-| Brand primary | `--brand-primary` | `#1F3D2E` (forest) | Forest CTAs, badges |
-| Brand accent | `--brand-accent` | `#C75A3A` (terracotta) | Primary action color, links, accent text |
-| Brand warm | `--brand-warm` | `#E8A93A` (sun) | **Reserved for joy** — fresh highlights, super-admin chips, success glow |
-| Borders | `--border-soft / mid / strong` | cream alphas | Whisper-quiet → emphasis |
+| Canvas | `--surface-0` | `#FBF9F5` | Page background |
+| Card | `--surface-1` | `#FFFFFF` | Cards, sidebar, default surface |
+| Hover / low | `--surface-2` | `#F5F3EF` | Hover surfaces, inputs, secondary panels |
+| Popover | `--surface-3` | `#EFEEEA` | Dropdowns, modals, tooltips |
+| CTA band | `--surface-4` | `#F2E8D5` | Warm section bands |
+| Text primary | `--text-primary` | `#2D241E` | Headings, body |
+| Text secondary | `--text-secondary` | `#594139 / 86%` | Supporting text |
+| Text tertiary | `--text-tertiary` | `#594139 / 64%` | Metadata, labels |
+| Text muted | `--text-muted` | `#594139 / 44%` | Disabled, placeholders |
+| Brand primary | `--brand-primary` | `#4F6144` | Leaf actions, secondary CTAs, success |
+| Brand accent | `--brand-accent` | `#A73400` | Primary buttons, links, prices |
+| Brand warm | `--brand-warm` | `#F0642F` | Highlights, fresh states, super-admin emphasis |
+| Clay | `--color-terra` | `#E09B6B` | Soft decorative warmth and low-emphasis badges |
+| Border | `--border-soft / mid / strong` | `#8D7168` alphas | Low-noise separation |
 
 **Rules**:
-- Color carries meaning. Decorative gradients = forbidden.
-- Sun (`--brand-warm`) is reserved — using it on every button kills the moment.
-- Every accent button needs `color: var(--color-bone)` (~cream), never raw black on terra.
+- Primary action text uses `--color-bone` on `--brand-accent`.
+- Use `--brand-primary` for calm secondary action, not as a page background.
+- Keep blue/purple out of system states; info uses muted leaf.
+- Avoid raw hex in components unless working in standalone SVG assets.
 
 ## Typography
 
-Fonts loaded via `next/font/google` in `src/app/layout.tsx` — autohosted, zero CLS.
+Fonts are loaded through `next/font/google` in `frontend/src/app/layout.tsx`.
 
-- **Fraunces** (italic 800) — wordmark + headlines + dialog titles + page-section subtitles
-- **DM Sans** (400/500/600/700) — body, UI, inputs, buttons
-- **JetBrains Mono** (400/500) — metadata, dates, IDs, tabular numbers, role labels in chips
+- **Literata** — headlines, wordmark fallback, dialog titles, editorial sections.
+- **DM Sans** — body copy, UI, inputs, buttons.
+- **JetBrains Mono** — metadata, dates, IDs, tabular numbers, role labels.
 
 Variables: `--font-serif`, `--font-sans`, `--font-mono`.
 
-## Spacing & radius
+## Spacing, Radius, Depth
 
 - 4pt base unit. Tokens `--space-1..16`.
 - Radius: `sm 4 / md 8 / lg 12 / xl 16 / full`.
-- Cards: `rounded-2xl` (16px), inputs `rounded-md` (8), badges `rounded-full`.
+- Depth strategy: tonal layers plus very soft clay-tinted ambient shadows.
+- Inputs are inset warm off-white (`--input-bg`) with sandy borders.
+- Header glass uses white opacity plus `backdrop-filter: blur(20px)`.
 
-## Depth strategy: **borders + cream-alpha**
+## Signature Element
 
-Surfaces stack via background tint, not shadows. Borders disappear in the
-squint test. The only places that DO use shadow are:
+The initials chip remains the reusable brand gesture:
 
-- Toasts (`0 12px 32px -12px`)
-- Modals (`0 32px 64px -24px`)
-- Hover states on primary/forest buttons (warm-tinted, very subtle)
+1. Toast icon discs.
+2. Success modal icon disc.
+3. UserMenu avatar.
+4. Users table avatar.
+5. Future avatars.
 
-Don't add shadow to cards. Don't add shadow to inputs. Don't add shadow to
-sidebar items.
+Default chip token: `font-family: var(--font-mono); letter-spacing: 0.04em;
+background: var(--brand-accent); color: var(--color-bone);`.
 
-## Signature element: the **iniciales chip**
+## Logo System
 
-A single visual gesture appears in five places — that's how you know it's the
-brand and not a template:
+Component: `frontend/src/components/logo.tsx`.
 
-1. **Toast** — disco de icono semántico (CheckCircle / AlertCircle / Info / AlertTriangle), 28px, fondo `rgba(severity, 0.18)`.
-2. **Modal de éxito** — disco verde-success grande (`56px`) con `CheckCircle2` y glow ámbar superior.
-3. **UserMenu** (header público + sidebar) — chip `9px font-mono` con iniciales en `--brand-accent`, texto cream.
-4. **Tabla de usuarios** — mismo chip `40px`, terra para clientes/admins, **sun + ink para super-admin** (alegría reservada).
-5. **Avatares de cualquier futuro lugar** — siempre el mismo: terra circle + cream initials + tracking 0.04em.
+- `variant="mark"`: cabin only.
+- `variant="full"`: cabin + Cabanas Coroico wordmark.
+- `tone="default"`: light morning surfaces.
+- `tone="onForest"`: dark overlays only, using inverse tokens.
+- `tone="monochrome"`: currentColor.
 
-Token CSS implícito: `font-family: var(--font-mono); letter-spacing: 0.04em; background: var(--brand-accent); color: var(--color-bone);`
+The logo is server-rendered SVG inline. Never replace it with `<img src>`.
 
-## Logo system
+## Media Hero Legibility
 
-Component: `src/components/logo.tsx`. Variants: `mark` (just the cabin)
-and `full` (cabin + Cabañas Coroico wordmark in Fraunces italic).
-Tones: `default` (sobre cream), `onForest` (sobre dark — el del proyecto)
-y `monochrome` (currentColor).
+Any text rendered over a CMS/property photo must use the media hero pattern from
+`frontend/src/app/globals.css`:
 
-The logo is server-rendered SVG inline. Never replace with `<img src>`.
+- `.media-hero-scrim` on the image overlay.
+- `.media-hero-title` on the main headline.
+- `.media-hero-copy` on supporting copy.
+- `.media-hero-chip` for availability/status chips over media.
+- `.media-hero-secondary` for secondary buttons over media.
+
+Reason: CMS images vary wildly in brightness. A single transparent black overlay
+is not enough for all photos. The approved pattern uses a focal radial scrim plus
+controlled text shadow, keeping the morning palette while making headlines read
+clearly over foliage, brick, sky, and interiors.
 
 ## Motion
 
-Defined in `src/app/globals.css` keyframes. **All animations express
-cause-effect; nothing decorates.** All respect `prefers-reduced-motion`.
+Defined in `frontend/src/app/globals.css`. Animations express cause-effect and
+respect `prefers-reduced-motion`.
 
-| Keyframe | Duration | Use |
-|---|---|---|
-| `fadeIn` | 140–220ms ease-out | Dropdowns, calendar range, in-range cells |
-| `slideUp` | 180–260ms ease-out | Card entries, list items |
-| `slideInRight` | 220ms cubic-bezier(0.22,0.61,0.36,1) | Toasts |
-| `dialogIn` | 280ms cubic-bezier | Modals (Radix Dialog) |
-| `pulseAccent` | 1.4s × 2 cycles | Highlight "recién creado" via `?fresh=1` |
-| `shimmer` | 1.8s ease-in-out infinite | Skeleton overlay (`.skeleton` class) |
-
-**Buttons**: `transition: 150ms ease-out` for color, `120ms` for transform.
-Hover lifts `translateY(-1px)` + warm shadow. Active returns to 0.
-Focus-visible: 2px terra ring offset 2.
-
-## State patterns (pick one, commit)
-
-For data that loads over the network, every page needs **four states explicitly**:
-
-1. **Loading** — `<div className="h-X rounded-xl skeleton" style={{ background: 'var(--surface-1)' }} />` × 3-4 placeholders.
-2. **Error** — colored card (`rgba(217, 99, 78, 0.08)` bg, `0.25` border) with body text + "Reintentar" link calling `mutate()`.
-3. **Empty** — `<EmptyCard title subtitle />` pattern: surface-1 card with circular icon disc and Fraunces title + secondary subtitle.
-4. **Success/data** — actual list/table.
-
-Never render `{data && (<list>)}` without empty/error fallbacks. The user reading "I see nothing" is debugger-blind.
-
-## Feedback hierarchy (this is the heart of "professional and sober")
-
-| Severity / scope | Feedback |
+| Keyframe | Use |
 |---|---|
-| Tiny inline change (filter, sort) | Visual state in the UI itself |
-| Routine action (approve, save, change role) | **Toast** with icon disc — 4.5s success / 6.5s error |
-| Pivotal moment for the user (reservation created, first deploy) | **Modal de éxito** with summary, two CTAs ("Ver detalle" / "Inicio") |
-| "You just did something, here it is" | **`?fresh=1` highlight** with `pulseAccent` 2 cycles + border `--brand-warm` |
-| Logout / session-end | Toast "Sesión cerrada · ¡Hasta pronto!" + 600ms beat before redirect |
+| `fadeIn` | Dropdowns, calendar range, in-range cells |
+| `slideUp` | Card and list entry |
+| `slideInRight` | Toasts |
+| `dialogIn` | Modals |
+| `pulseAccent` | `?fresh=1` highlight |
+| `shimmer` | Skeleton loading |
 
-**Never** auto-dismiss success modals — the user reads them and chooses.
-**Always** prefetch the destination route before showing the success modal.
+## State Patterns
 
-## Auth flow
+For network data, pages should explicitly render loading, error, empty, and data
+states. Error surfaces use `rgba(186, 26, 26, 0.08)` with a matching soft border.
+Success uses leaf alphas. Warning uses warm brown/orange alphas.
 
-`lib/auth.ts` — pure helpers (client + server safe): `MeResponse`,
-`UserRole`, `dashboardHomeForRole`, `roleLabel`, `initialsOf`.
-`lib/auth-server.ts` — `getMe()` cached with `React.cache` for per-request dedup.
+## Component Library Reused Across The App
 
-The user identity propagates via Server Component layouts (cookie → backend →
-cached me). UI components receive `userInitials`, `userRoleLabel`,
-`dashboardHref` as props — never re-fetch the user from a Client Component.
+- `<Logo>`
+- `<UserMenu placement="header" | "sidebar" collapsed>`
+- `<VoucherViewer variant="full" | "thumb" url minioKey>`
+- `<ReservationSuccessDialog>`
+- `<StaticPageContent slug title lead icon>`
+- `<ToastProvider>` + `useToast()`
 
-## Component library reused across the app
+## Backend Conventions That Affect The UI
 
-- `<Logo>` — see logo system above.
-- `<UserMenu placement="header" | "sidebar" collapsed>` — single dropdown for both surfaces. Lives in `components/user-menu.tsx`.
-- `<VoucherViewer variant="full" | "thumb" url minioKey>` — image lightbox, PDF link. Lives in `components/voucher-viewer.tsx`.
-- `<ReservationSuccessDialog>` — sober success modal. Lives in `components/reservation-success-dialog.tsx`.
-- `<StaticPageContent slug title lead icon>` — `/terms`, `/privacy`, `/contact` share the same layout.
-- `<ToastProvider>` + `useToast()` — semantic toasts in `components/ui/toast.tsx`.
-
-## Backend conventions that affect the UI
-
-- All list endpoints return `{ items: [...], total, page?, page_size? }`. Frontend types must match — never `T[]`.
-- IDs are UUIDs. URLs use them lowercase.
+- List endpoints return `{ items: [...], total, page?, page_size? }`, not bare arrays.
+- IDs are UUIDs and URLs use lowercase UUIDs.
 - Static pages: `/cms/pages/{slug}` returns `{ id, slug, content, updated_at? }`.
-- MinIO URLs from the backend point to `http://minio:9000/...`. Use `toBrowserUrl()` to rewrite to `/minio/...` for the browser via Next.js rewrite. Bucket `payment-vouchers` is private — presigned URLs work through the rewrite because SigV4 signs `Host: minio:9000` which matches what Next proxies upstream.
+- Browser-facing MinIO URLs are rewritten with `toBrowserUrl()`.
 
-## CSS layer architecture (don't break this)
+## CSS Layer Architecture
 
-Tailwind v4 declares `@layer theme, base, components, utilities;` — this
-ordering means **utilities always win over components** regardless of file
-position. The project's `globals.css` follows this discipline:
+Tailwind v4 declares `@layer theme, base, components, utilities;`.
 
-- **`@layer utilities`** — single-property tokens (`surface-N`, `text-*`,
-  `border-*`, `font-*`). Here only because they need to compose freely
-  with Tailwind's own utilities. Don't add multi-property classes here.
-- **`@layer components`** — multi-property classes (`.btn-*`, `.card`,
-  `.input-field`, `.badge-*`). They ALWAYS lose to Tailwind utilities.
-  This is what allows `<input className="input-field pl-9" />` to
-  actually get 36px of padding-left even though `.input-field` declares
-  `padding: 10px 14px` shorthand.
+- `@layer utilities`: single-property token classes only.
+- `@layer components`: multi-property classes like `.btn-*`, `.card`,
+  `.input-field`, `.badge-*`.
 
-If you write a multi-property component class anywhere outside
-`@layer components`, you create a latent bug: any caller that adds a
-Tailwind utility expecting to override (icons inside inputs, custom
-padding on a button) will silently fail because the shorthand wins by
-declaration order.
+Multi-property classes belong in `components` so Tailwind utilities can override
+padding, background, and spacing safely at call sites.
 
-**Test**: before merging a new `.foo { padding: ... }` style, ask:
-*"if a caller does `<el className='foo px-8'>`, does `px-8` win?"* If
-the answer isn't yes, you're in the wrong layer.
+## What To Never Do
 
-## What to never do
-
-- Don't add `--gray-700` style tokens. The whole point is Cabañas Coroico's territory.
-- Don't use `<select>` HTML element. Use Radix DropdownMenu with iconography.
-- Don't add a 5th accent color. Sun is the limit; gold/blue/purple kill the brand.
-- Don't auto-dismiss success modals.
-- Don't ship a page without empty + error + loading states.
-- Don't render a `<a target="_blank">` around an image just because there's no time for a lightbox. There's always time — `VoucherViewer` exists.
-- Don't place "Cerrar sesión" as a bare button. It belongs in `UserMenu`.
-
-## Updating this file
-
-If you add a reusable pattern (used 2+ times) or change a token, update
-this file in the same PR. Page-specific deviations belong in
-`.interface-design/pages/<page>.md` (overrides take priority over Master).
+- Do not reintroduce the old dark forest theme as the default.
+- Do not add blue/purple SaaS accents.
+- Do not use decorative gradient orbs.
+- Do not use raw status colors when a semantic token exists.
+- Do not ship pages without loading, error, empty, and success/data states.
+- Do not place logout as a bare button; it belongs in `UserMenu`.

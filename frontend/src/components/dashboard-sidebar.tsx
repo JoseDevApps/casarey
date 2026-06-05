@@ -87,9 +87,9 @@ export function DashboardSidebar({
         aria-label="Cabañas Coroico — inicio"
       >
         {collapsed ? (
-          <Logo variant="mark" size={26} tone="onForest" />
+          <Logo variant="mark" size={26} />
         ) : (
-          <Logo variant="full" size={26} tone="onForest" />
+          <Logo variant="full" size={26} />
         )}
       </Link>
 
@@ -107,7 +107,7 @@ export function DashboardSidebar({
               )}
               style={{
                 color: isActive ? 'var(--brand-accent)' : 'var(--text-secondary)',
-                background: isActive ? 'rgba(199, 90, 58, 0.10)' : undefined,
+                background: isActive ? 'rgba(167, 52, 0, 0.10)' : undefined,
               }}
               title={collapsed ? item.label : undefined}
             >

@@ -5,7 +5,7 @@
  * Uso:
  *   <Logo />                          → mark + wordmark, tonos default
  *   <Logo variant="mark" size={32} /> → solo el ícono, para favicon-like
- *   <Logo tone="onForest" />          → invertido para fondos forest
+ *   <Logo tone="onForest" />          → invertido para fondos oscuros puntuales
  *
  * Server component (sin "use client") — se renderiza estático y va al CDN.
  */
@@ -16,7 +16,7 @@ const TONES: Record<
   LogoTone,
   { roof: string; slope: string; post: string; base: string; sun: string; word1: string; word2: string }
 > = {
-  // Sobre fondo claro (cream / superficies claras)
+  // Sobre fondo claro (morning surfaces)
   default: {
     roof: 'var(--brand-accent)',
     slope: 'var(--brand-primary)',
@@ -26,15 +26,15 @@ const TONES: Record<
     word1: 'var(--brand-primary)',
     word2: 'var(--brand-accent)',
   },
-  // Sobre fondo forest (dark mode del proyecto)
+  // Sobre fondo oscuro puntual
   onForest: {
-    roof: 'var(--brand-warm)',
-    slope: 'var(--text-primary)',
-    post: 'var(--text-primary)',
-    base: 'var(--brand-warm)',
+    roof: 'var(--inverse-primary, var(--brand-warm))',
+    slope: 'var(--inverse-on-surface, white)',
+    post: 'var(--inverse-on-surface, white)',
+    base: 'var(--inverse-primary, var(--brand-warm))',
     sun: 'var(--brand-warm)',
-    word1: 'var(--text-primary)',
-    word2: 'var(--brand-warm)',
+    word1: 'var(--inverse-on-surface, white)',
+    word2: 'var(--inverse-primary, var(--brand-warm))',
   },
   // Una sola tinta — útil para impresión / contextos restringidos
   monochrome: {
@@ -97,7 +97,7 @@ interface LogoProps {
 export function Logo({
   variant = 'full',
   size = 32,
-  tone = 'onForest',
+  tone = 'default',
   className,
   ariaLabel = 'Cabañas Coroico',
 }: LogoProps) {
@@ -139,29 +139,29 @@ export function Logo({
         <CabinPaths tone={tone} />
       </g>
 
-      {/* Wordmark — "Cabañas" / "Coroico" en Fraunces italic 800 */}
+      {/* Wordmark — "Cabañas" / "Coroico" en Literata italic 700 */}
       <g transform="translate(380 0)">
         <text
           x="0"
           y="135"
-          fontFamily="var(--font-serif), Fraunces, Georgia, serif"
+          fontFamily="var(--font-serif), Literata, Georgia, serif"
           fontStyle="italic"
-          fontWeight={800}
+          fontWeight={700}
           fontSize={108}
           fill={c.word1}
-          letterSpacing="-2"
+          letterSpacing="0"
         >
           Cabañas
         </text>
         <text
           x="36"
           y="240"
-          fontFamily="var(--font-serif), Fraunces, Georgia, serif"
+          fontFamily="var(--font-serif), Literata, Georgia, serif"
           fontStyle="italic"
-          fontWeight={800}
+          fontWeight={700}
           fontSize={108}
           fill={c.word2}
-          letterSpacing="-2"
+          letterSpacing="0"
         >
           Coroico
         </text>

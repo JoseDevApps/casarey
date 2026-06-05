@@ -78,7 +78,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
-            <Logo variant="full" size={32} tone="onForest" />
+            <Logo variant="full" size={32} />
           </Link>
         </div>
 
@@ -104,8 +104,8 @@ export default function RegisterPage() {
             <div
               className="rounded-lg px-4 py-3 mb-5 text-sm"
               style={{
-                background: 'rgba(220, 80, 80, 0.1)',
-                border: '1px solid rgba(220, 80, 80, 0.3)',
+                background: 'rgba(186, 26, 26, 0.08)',
+                border: '1px solid rgba(186, 26, 26, 0.24)',
                 color: 'var(--color-error)',
               }}
             >

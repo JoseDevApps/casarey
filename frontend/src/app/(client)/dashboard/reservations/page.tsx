@@ -48,8 +48,8 @@ export default function ClientReservationsPage() {
         <div
           className="rounded-xl p-6 text-sm text-center"
           style={{
-            background: 'rgba(220, 80, 80, 0.08)',
-            border: '1px solid rgba(220, 80, 80, 0.2)',
+            background: 'rgba(186, 26, 26, 0.08)',
+            border: '1px solid rgba(186, 26, 26, 0.22)',
             color: 'var(--color-error)',
           }}
         >

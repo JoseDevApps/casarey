@@ -203,7 +203,7 @@ export function AvailabilityCalendar({
                     color: 'var(--text-muted)',
                   }),
                   ...(inRange && {
-                    background: 'rgba(29, 71, 52, 0.45)',
+                    background: 'rgba(79, 97, 68, 0.18)',
                     color: 'var(--text-primary)',
                     borderRadius: '0',
                   }),

@@ -75,6 +75,7 @@ export default function LoginPage() {
 
       setNeedsVerification(false)
       setResendFeedback(null)
+      window.dispatchEvent(new CustomEvent('auth:changed'))
 
       // TokenResponse has no role — fetch profile to get it
       const meRes = await fetch('/api/auth/me', { credentials: 'include' })
@@ -149,7 +150,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center" aria-label="Cabañas Coroico — inicio">
-            <Logo variant="full" size={32} tone="onForest" />
+            <Logo variant="full" size={32} />
           </Link>
         </div>
 
@@ -175,8 +176,8 @@ export default function LoginPage() {
             <div
               className="rounded-lg px-4 py-3 mb-4 text-sm"
               style={{
-                background: 'rgba(232, 169, 58, 0.12)',
-                border: '1px solid rgba(232, 169, 58, 0.3)',
+                background: 'rgba(240, 100, 47, 0.10)',
+                border: '1px solid rgba(240, 100, 47, 0.24)',
                 color: 'var(--brand-warm)',
               }}
             >
@@ -188,8 +189,8 @@ export default function LoginPage() {
             <div
               className="rounded-lg px-4 py-3 mb-5 text-sm"
               style={{
-                background: 'rgba(220, 80, 80, 0.1)',
-                border: '1px solid rgba(220, 80, 80, 0.3)',
+                background: 'rgba(186, 26, 26, 0.08)',
+                border: '1px solid rgba(186, 26, 26, 0.24)',
                 color: 'var(--color-error)',
               }}
             >
@@ -201,8 +202,8 @@ export default function LoginPage() {
             <div
               className="rounded-lg px-4 py-3 mb-5 text-sm"
               style={{
-                background: 'rgba(140, 180, 200, 0.12)',
-                border: '1px solid rgba(140, 180, 200, 0.3)',
+                background: 'rgba(103, 122, 92, 0.10)',
+                border: '1px solid rgba(103, 122, 92, 0.24)',
                 color: 'var(--text-primary)',
               }}
             >
@@ -257,13 +258,13 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="input-field pr-10"
+                  className="input-field pr-12"
                   {...register('password')}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-80"
+                  className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--surface-2)]"
                   style={{ color: 'var(--text-muted)' }}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >

@@ -68,15 +68,15 @@ export function ReservationSuccessDialog({
               background: 'var(--surface-1)',
               border: '1px solid var(--border-mid)',
               boxShadow:
-                '0 40px 80px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(244,236,216,0.04)',
+                '0 36px 78px -44px rgba(171,54,0,0.45), 0 0 0 1px rgba(255,255,255,0.78)',
             }}
           >
             {/* ── Top Section: Celebration ── */}
             <div
               className="relative px-6 pt-8 pb-6 text-center overflow-hidden"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(232,169,58,0.08) 0%, transparent 100%)',
+                style={{
+                  background:
+                    'linear-gradient(180deg, rgba(240,100,47,0.08) 0%, transparent 100%)',
               }}
             >
               {/* Subtle decorative line top */}
@@ -99,8 +99,8 @@ export function ReservationSuccessDialog({
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center relative"
                   style={{
-                    background: 'rgba(91,168,110,0.15)',
-                    border: '2px solid rgba(91,168,110,0.3)',
+                    background: 'rgba(79,97,68,0.13)',
+                    border: '2px solid rgba(79,97,68,0.24)',
                   }}
                 >
                   <CheckCircle2

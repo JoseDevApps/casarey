@@ -54,12 +54,13 @@ export function UserMenu({
       if (!res.ok && res.status !== 204) {
         throw new Error('No se pudo cerrar la sesión')
       }
+      window.dispatchEvent(new CustomEvent('auth:changed'))
       toast('Sesión cerrada · ¡Hasta pronto!', 'success')
       // Beat para que el usuario alcance a leer antes de redirigir.
       // 600ms ≈ duración natural de "lectura confirmada" sin sentirse lento.
       await new Promise((r) => setTimeout(r, 600))
+      router.replace('/')
       router.refresh()
-      router.push('/')
     } catch (err) {
       setSigningOut(false)
       toast(
@@ -185,9 +186,9 @@ export function UserMenu({
             <span
               className="inline-block mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full"
               style={{
-                background: 'rgba(199, 90, 58, 0.14)',
+                background: 'rgba(167, 52, 0, 0.12)',
                 color: 'var(--brand-accent)',
-                border: '1px solid rgba(199, 90, 58, 0.28)',
+                border: '1px solid rgba(167, 52, 0, 0.26)',
               }}
             >
               {roleLabel}

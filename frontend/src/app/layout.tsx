@@ -1,15 +1,15 @@
 import type { Metadata } from 'next'
-import { Fraunces, DM_Sans, JetBrains_Mono } from 'next/font/google'
+import { Literata, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/toast'
 
-// Tipografía editorial-rural alineada al logo digitalizado.
+// Tipografía Yungas Morning Radiance: Literata editorial + DM Sans funcional.
 // next/font autohospeda las fuentes en build time → sin requests a Google
 // en el cliente, sin layout shift, perf óptima en Vercel/CDN.
-const fraunces = Fraunces({
+const literata = Literata({
   subsets: ['latin'],
-  variable: '--font-fraunces',
-  weight: ['400', '600', '700', '800'],
+  variable: '--font-literata',
+  weight: ['400', '600', '700'],
   style: ['normal', 'italic'],
   display: 'swap',
 })
@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${fraunces.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+      className={`${literata.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
     >
       <body>
         <ToastProvider>{children}</ToastProvider>
