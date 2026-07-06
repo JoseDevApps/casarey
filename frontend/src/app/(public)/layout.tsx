@@ -30,24 +30,6 @@ export default async function PublicLayout({
             <Logo variant="full" size={28} />
           </Link>
 
-          {/* Nav links */}
-          <div className="hidden sm:flex items-center gap-1">
-            <Link
-              href="/"
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 hover:bg-[var(--surface-2)]"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Inicio
-            </Link>
-            <Link
-              href="/properties"
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 hover:bg-[var(--surface-2)]"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Propiedades
-            </Link>
-          </div>
-
           {/* Right slot — auth or user nav */}
           <div className="flex items-center gap-2">
             <AuthHeaderSlot initialUser={me} />

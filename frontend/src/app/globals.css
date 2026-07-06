@@ -427,6 +427,99 @@
   pointer-events: none;
 }
 
+/* =====================================================
+   SCROLLYTELLING — 001 Landing
+   Reveal al entrar en viewport + barra de progreso + nav de secciones.
+   Solo anima transform/opacity (CP-2). Reusa variables del design system (CP-1).
+   ===================================================== */
+
+/* Scroll suave para anclas internas (#cabanas, etc.) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Compensa el header sticky (h-16 = 64px) al saltar por anclas */
+.scrolly-root section[id] {
+  scroll-margin-top: 80px;
+}
+
+/* Estado base oculto del reveal; la clase .is-visible lo entra */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Barra de progreso de lectura — fija arriba, sobre el header */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--scroll-progress, 0));
+  background: linear-gradient(90deg, var(--brand-accent), var(--brand-warm));
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Nav de secciones — dots verticales a la derecha */
+.section-nav {
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section-nav__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--border-strong);
+  border: 1px solid transparent;
+  transition: background 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+.section-nav__dot:hover { transform: scale(1.25); }
+.section-nav__dot[aria-current='true'] {
+  background: var(--brand-accent);
+  transform: scale(1.35);
+}
+.section-nav__dot:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .section-nav { display: none; }
+}
+
+/* Scroll-hint del hero — desaparece y queda quieto bajo reduced-motion */
+.scroll-hint {
+  animation: scrollHintBob 1.8s ease-in-out infinite;
+}
+@keyframes scrollHintBob {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50%      { transform: translateY(6px); opacity: 1; }
+}
+
+/* Reduced motion: el reveal aparece sin desplazamiento ni espera */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .scroll-hint { animation: none !important; }
+}
+
 /* Respect reduced motion globally */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

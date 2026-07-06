@@ -100,8 +100,8 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/properties"
+          <a
+            href="#cabanas"
             className="inline-flex items-center gap-2 text-base font-semibold px-8 py-4 rounded-xl transition-all duration-150"
             style={{
               background: 'var(--brand-accent)',
@@ -111,7 +111,7 @@ export function BannerCarousel({ banners, intervalMs = 6000 }: BannerCarouselPro
           >
             Ver cabañas
             <ArrowRight size={18} />
-          </Link>
+          </a>
           <Link
             href="/login"
             className="media-hero-secondary inline-flex items-center gap-2 text-base font-medium px-8 py-4 rounded-xl transition-all duration-150"

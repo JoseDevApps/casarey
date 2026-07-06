@@ -6,16 +6,17 @@ import { formatCurrency, getImageUrl } from '@/lib/utils'
 
 interface PropertyCardProps {
   property: Property
+  /** Si se provee, la tarjeta abre el detalle in-place (modal) en vez de navegar */
+  onSelect?: (property: Property) => void
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+export function PropertyCard({ property, onSelect }: PropertyCardProps) {
   const firstImage = property.images?.[0]
   const imageUrl = firstImage
     ? getImageUrl(firstImage.minio_key)
     : null
 
-  return (
-    <Link href={`/properties/${property.id}`} className="block group">
+  const inner = (
       <article
         className="card overflow-hidden transition-all duration-200 group-hover:border-[var(--border-mid)]"
         style={{ background: 'var(--surface-1)' }}
@@ -91,6 +92,24 @@ export function PropertyCard({ property }: PropertyCardProps) {
           </div>
         </div>
       </article>
+  )
+
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(property)}
+        className="block group w-full text-left"
+        aria-label={`Ver detalles de ${property.name}`}
+      >
+        {inner}
+      </button>
+    )
+  }
+
+  return (
+    <Link href={`/properties/${property.id}`} className="block group">
+      {inner}
     </Link>
   )
 }
