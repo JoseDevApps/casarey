@@ -19,12 +19,11 @@ export default async function AdminLayout({
   if (!user) redirect('/login')
   if (user.must_change_password) redirect('/change-password')
   if (user.role === 'CLIENT') redirect('/dashboard/reservations')
-  if (user.role === 'SUPER_ADMIN') redirect('/dashboard/users')
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--surface-0)' }}>
       <DashboardSidebar
-        variant="admin"
+        variant={user.role === 'SUPER_ADMIN' ? 'superadmin' : 'admin'}
         userName={user.full_name}
         userEmail={user.email}
         userInitials={initialsOf(user.full_name)}

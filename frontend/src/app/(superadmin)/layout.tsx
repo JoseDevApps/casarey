@@ -15,7 +15,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   if (!user) redirect('/login')
   if (user.must_change_password) redirect('/change-password')
   if (user.role !== 'SUPER_ADMIN') {
-    if (user.role === 'ADMIN') redirect('/dashboard/properties')
+    if (user.role === 'ADMIN') redirect('/dashboard/overview')
     redirect('/dashboard/reservations')
   }
 

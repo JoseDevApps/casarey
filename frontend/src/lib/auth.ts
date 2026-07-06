@@ -23,9 +23,9 @@ export function dashboardHomeForRole(role: UserRole): string {
     case 'CLIENT':
       return '/dashboard/reservations'
     case 'ADMIN':
-      return '/dashboard/properties'
+      return '/dashboard/overview'
     case 'SUPER_ADMIN':
-      return '/dashboard/users'
+      return '/dashboard/overview'
   }
 }
 

@@ -17,6 +17,7 @@ import {
   Mail,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -33,6 +34,7 @@ const NAV_BY_VARIANT: Record<Variant, NavItem[]> = {
     { href: '/dashboard/reservations', label: 'Mis Reservas', icon: CalendarDays },
   ],
   admin: [
+    { href: '/dashboard/overview', label: 'Inicio', icon: LayoutDashboard },
     { href: '/dashboard/properties', label: 'Propiedades', icon: Building2 },
     { href: '/dashboard/requests', label: 'Reservas', icon: CalendarDays },
     { href: '/dashboard/payments', label: 'Pagos', icon: CreditCard },
@@ -40,6 +42,7 @@ const NAV_BY_VARIANT: Record<Variant, NavItem[]> = {
     { href: '/dashboard/finances', label: 'Finanzas', icon: BarChart3 },
   ],
   superadmin: [
+    { href: '/dashboard/overview', label: 'Inicio', icon: LayoutDashboard },
     { href: '/dashboard/users', label: 'Usuarios', icon: Users },
     { href: '/dashboard/cms/banners', label: 'Banners', icon: Image },
     { href: '/dashboard/cms/pages', label: 'Páginas estáticas', icon: FileText },
