@@ -16,6 +16,7 @@ class AdminNotificationPreference(Base):
         index=True,
     )
     notification_email = Column(String, nullable=True)
+    notification_phone = Column(String, nullable=True)
 
     client_approved_subject = Column(String, nullable=False)
     client_approved_body = Column(Text, nullable=False)

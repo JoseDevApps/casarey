@@ -6,6 +6,7 @@ from app.models.reservation import Reservation, BookingGuest, ReservationStatus
 from app.models.payment import PaymentMethod, PaymentVoucher
 from app.models.cms import CmsBanner, CmsStaticPage, CmsFeaturedProperty
 from app.models.notification import AdminNotificationPreference
+from app.models.otp_code import OtpCode, OtpPurpose
 
 __all__ = [
     "User",
@@ -26,4 +27,6 @@ __all__ = [
     "CmsStaticPage",
     "CmsFeaturedProperty",
     "AdminNotificationPreference",
+    "OtpCode",
+    "OtpPurpose",
 ]

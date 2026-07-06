@@ -761,3 +761,4 @@ MINIO_PASSWORD=<mínimo 8 chars>
 - **package-lock.json**: Pendiente de generar (`cd frontend && npm install`) para usar `npm ci` en Dockerfiles y tener builds reproducibles.
 - **HTTPS en producción**: Cambiar `COOKIE_OPTS.secure = True` en `auth.py` y `MINIO_SECURE = true`.
 - **bcrypt**: Fijado a `4.0.1` por incompatibilidad de `passlib==1.7.4` con `bcrypt>=4.1`.
+- **Planes SDD**: Todos los planes/specs de features (metodología SDD) viven en `specs/NNN-nombre/` en la raíz del repo (spec.md, plan.md, research.md, tasks.md) — nunca fuera del directorio de trabajo. Incrementos existentes: 001 landing scrollytelling, 002 dashboard de disponibilidad, 003 notificaciones WhatsApp.

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { MailCheck } from 'lucide-react'
+import { MailCheck, MessageCircle } from 'lucide-react'
 import type { AdminNotificationPreferences } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast'
 
 interface FormState {
   notification_email: string
+  notification_phone: string
   client_approved_subject: string
   client_approved_body: string
   client_rejected_subject: string
@@ -44,6 +45,7 @@ function fetcher(url: string) {
 function toForm(data: AdminNotificationPreferences): FormState {
   return {
     notification_email: data.notification_email ?? '',
+    notification_phone: data.notification_phone ?? '',
     client_approved_subject: data.client_approved_subject,
     client_approved_body: data.client_approved_body,
     client_rejected_subject: data.client_rejected_subject,
@@ -153,6 +155,7 @@ export default function AdminNotificationsPage() {
           body: JSON.stringify({
             ...form,
             notification_email: form.notification_email.trim() || null,
+            notification_phone: form.notification_phone.trim() || null,
           }),
         }
       )
@@ -199,13 +202,79 @@ export default function AdminNotificationsPage() {
     <div className="flex flex-col gap-5">
       <div className="mb-2">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          Notificaciones por correo
+          Notificaciones
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Personaliza los correos que reciben tus clientes durante el flujo de reserva.
+          Tus clientes reciben las novedades por WhatsApp; el correo funciona
+          como canal de respaldo.
         </p>
       </div>
 
+      {/* ─── WhatsApp (canal principal) ─── */}
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={16} style={{ color: 'var(--brand-primary)' }} />
+            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              WhatsApp
+            </p>
+          </div>
+          <span
+            className="text-xs font-medium px-2.5 py-1 rounded-full"
+            style={
+              data?.whatsapp_enabled
+                ? {
+                    background: 'rgba(79, 97, 68, 0.13)',
+                    border: '1px solid rgba(79, 97, 68, 0.24)',
+                    color: 'var(--brand-primary)',
+                  }
+                : {
+                    background: 'rgba(120, 128, 124, 0.18)',
+                    border: '1px solid rgba(120, 128, 124, 0.28)',
+                    color: 'var(--text-muted)',
+                  }
+            }
+          >
+            {data?.whatsapp_enabled ? 'Habilitado' : 'No configurado'}
+          </span>
+        </div>
+
+        <Input
+          label="WhatsApp para alertas del propietario (opcional)"
+          type="tel"
+          placeholder="Si lo dejas vacío, se usa el teléfono de tu cuenta"
+          value={form.notification_phone}
+          onChange={(e) => updateField('notification_phone', e.target.value)}
+        />
+
+        <div className="mt-4">
+          <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-tertiary)' }}>
+            Plantillas de WhatsApp (se gestionan y aprueban en Meta Business
+            Manager — aquí solo se muestran los nombres configurados)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(data?.whatsapp_templates ?? {}).map(([key, name]) => (
+              <span
+                key={key}
+                className="text-xs px-2.5 py-1 rounded-full font-mono"
+                style={{
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border-soft)',
+                  color: 'var(--text-secondary)',
+                }}
+                title={key}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Email (canal de respaldo) ─── */}
       <div
         className="rounded-2xl p-5"
         style={{ background: 'var(--surface-1)', border: '1px solid var(--border-soft)' }}
@@ -213,7 +282,7 @@ export default function AdminNotificationsPage() {
         <div className="flex items-center gap-2 mb-3">
           <MailCheck size={16} style={{ color: 'var(--brand-accent)' }} />
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-            Correo para alertas del propietario
+            Correo para alertas del propietario (canal de respaldo)
           </p>
         </div>
         <Input
@@ -230,7 +299,7 @@ export default function AdminNotificationsPage() {
         style={{ background: 'var(--surface-2)', border: '1px solid var(--border-soft)' }}
       >
         <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-          Variables disponibles para plantillas
+          Variables disponibles para las plantillas de correo (canal de respaldo)
         </p>
         <div className="flex flex-wrap gap-2">
           {PLACEHOLDERS.map((item) => (

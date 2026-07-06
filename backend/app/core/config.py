@@ -23,6 +23,27 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_ENCRYPTION: str = "ssl"
     SMTP_FROM_EMAIL: str = ""
+    # WhatsApp Business Cloud API (Meta) — canal principal de notificaciones
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_DRY_RUN: bool = False
+    WHATSAPP_API_VERSION: str = "v21.0"
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_DEFAULT_COUNTRY_CODE: str = "591"
+    WHATSAPP_TEMPLATE_LANG: str = "es"
+    # Nombres de plantillas aprobadas en Meta Business Manager (configurables)
+    WHATSAPP_TEMPLATE_OTP: str = "codigo_verificacion"
+    WHATSAPP_TEMPLATE_ADMIN_NEW_RESERVATION: str = "admin_nueva_reserva"
+    WHATSAPP_TEMPLATE_ADMIN_VOUCHER_UPLOADED: str = "admin_comprobante_subido"
+    WHATSAPP_TEMPLATE_RESERVATION_APPROVED: str = "reserva_aprobada"
+    WHATSAPP_TEMPLATE_RESERVATION_REJECTED: str = "reserva_rechazada"
+    WHATSAPP_TEMPLATE_PAYMENT_RECEIVED: str = "pago_recibido"
+    WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED: str = "pago_confirmado"
+    # OTP (verificación de cuenta y reset por código)
+    OTP_EXPIRE_MINUTES: int = 10
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 60
+    OTP_MAX_SENDS_PER_HOUR: int = 5
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: str = "lax"
     COOKIE_DOMAIN: str = ""

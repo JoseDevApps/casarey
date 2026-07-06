@@ -22,6 +22,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False, default=UserRole.CLIENT)
     is_active = Column(Boolean, default=True, nullable=False)
     email_verified = Column(Boolean, default=False, nullable=False)
+    phone_verified = Column(Boolean, default=False, nullable=False)
     must_change_password = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

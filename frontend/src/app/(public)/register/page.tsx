@@ -6,16 +6,27 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, MessageCircle, Mail } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
+
+type VerificationChannel = 'whatsapp' | 'email'
+
+const PHONE_CLEAN = /[\s\-().]/g
+// Celular boliviano (8 dígitos, empieza en 6/7) o internacional (10-15 dígitos)
+const PHONE_RE = /^(?:[67]\d{7}|\+?\d{10,15})$/
 
 const schema = z
   .object({
     full_name: z.string().min(2, 'Nombre muy corto').max(100),
     email: z.string().email('Email inválido'),
-    phone: z.string().optional(),
+    phone: z
+      .string()
+      .min(1, 'El teléfono es obligatorio — ahí te llegan las notificaciones')
+      .refine((v) => PHONE_RE.test(v.replace(PHONE_CLEAN, '')), {
+        message: 'Ingresa tu celular de 8 dígitos (ej. 71234567) o formato internacional',
+      }),
     password: z
       .string()
       .min(8, 'Mínimo 8 caracteres')
@@ -34,6 +45,7 @@ export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [channel, setChannel] = useState<VerificationChannel>('whatsapp')
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -48,11 +60,20 @@ export default function RegisterPage() {
     setServerError(null)
     try {
       const { confirm_password: _, ...payload } = data
+      // Normaliza: celular local de 8 dígitos → prefijo 591; quita '+' y separadores
+      const cleaned = payload.phone.replace(PHONE_CLEAN, '').replace(/^\+/, '')
+      const phone = /^[67]\d{7}$/.test(cleaned) ? `591${cleaned}` : cleaned
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ ...payload, role: 'CLIENT' }),
+        body: JSON.stringify({
+          ...payload,
+          phone,
+          verification_channel: channel,
+          role: 'CLIENT',
+        }),
       })
 
       if (!res.ok) {
@@ -63,7 +84,14 @@ export default function RegisterPage() {
         return
       }
 
-      router.push(`/login?verify=1&email=${encodeURIComponent(payload.email)}`)
+      const created = (await res.json().catch(() => ({}))) as {
+        verification_channel?: string
+      }
+      // Siempre llega un código de 6 dígitos; el medio varía (WhatsApp o correo)
+      const medium = created.verification_channel === 'whatsapp' ? 'whatsapp' : 'email'
+      router.push(
+        `/verify-code?email=${encodeURIComponent(payload.email)}&channel=${medium}`
+      )
     } catch {
       setServerError('Error de conexión. Intenta de nuevo.')
     }
@@ -134,15 +162,45 @@ export default function RegisterPage() {
               {...register('email')}
             />
 
-            <Input
-              id="phone"
-              label="Teléfono (opcional)"
-              type="tel"
-              placeholder="+591 7x xxx xxx"
-              error={errors.phone?.message}
-              autoComplete="tel"
-              {...register('phone')}
-            />
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="phone"
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                WhatsApp
+              </label>
+              <div className="flex items-stretch gap-2">
+                <span
+                  className="inline-flex items-center px-3 rounded-lg text-sm font-medium shrink-0"
+                  style={{
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border-mid)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  +591
+                </span>
+                <input
+                  id="phone"
+                  type="tel"
+                  placeholder="71234567"
+                  autoComplete="tel"
+                  className="input-field flex-1"
+                  {...register('phone')}
+                />
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Te enviaremos el código de verificación y las novedades de tus
+                reservas por WhatsApp. ¿Número de otro país? Escríbelo completo
+                con código de país.
+              </p>
+              {errors.phone && (
+                <p className="text-xs" style={{ color: 'var(--color-error)' }}>
+                  {errors.phone.message}
+                </p>
+              )}
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label
@@ -210,6 +268,50 @@ export default function RegisterPage() {
                   {errors.confirm_password.message}
                 </p>
               )}
+            </div>
+
+            {/* Selector de canal de verificación */}
+            <div className="flex flex-col gap-1.5">
+              <span
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                ¿Cómo quieres verificar tu cuenta?
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, hint: 'Código al instante' },
+                  { value: 'email', label: 'Correo', icon: Mail, hint: 'Código a tu correo' },
+                ] as const).map((opt) => {
+                  const active = channel === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setChannel(opt.value)}
+                      aria-pressed={active}
+                      className="flex flex-col items-start gap-0.5 rounded-xl px-3.5 py-3 transition-all duration-150 text-left"
+                      style={{
+                        background: active ? 'rgba(79, 97, 68, 0.10)' : 'var(--surface-2)',
+                        border: active
+                          ? '1.5px solid var(--brand-primary)'
+                          : '1px solid var(--border-soft)',
+                      }}
+                    >
+                      <span
+                        className="flex items-center gap-1.5 text-sm font-semibold"
+                        style={{ color: active ? 'var(--brand-primary)' : 'var(--text-primary)' }}
+                      >
+                        <opt.icon size={15} />
+                        {opt.label}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {opt.hint}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <Button

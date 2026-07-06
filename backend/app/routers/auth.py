@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,11 +21,14 @@ from app.core.config import settings
 from app.models.user import User, UserRole
 from app.models.refresh_token import RefreshToken
 from app.models.password_reset_token import PasswordResetToken
-from app.services import email_service
+from app.models.otp_code import OtpPurpose
+from app.services import email_service, otp_service, whatsapp_service
+from app.utils.phone import is_valid_phone, normalize_phone_e164
 from app.schemas.user import (
     UserCreate,
     UserLogin,
     UserResponse,
+    RegisterResponse,
     TokenResponse,
     ChangePasswordRequest,
     EmailVerificationRequest,
@@ -32,8 +36,13 @@ from app.schemas.user import (
     EmailVerificationResult,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ResetPasswordWithCodeRequest,
+    ResendVerificationResult,
+    VerifyCodeRequest,
 )
 from app.dependencies import get_current_user
+
+logger = logging.getLogger("app.auth")
 
 router = APIRouter()
 
@@ -66,7 +75,53 @@ def _delete_cookie_opts() -> dict:
     return opts
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def _send_verification(
+    db: AsyncSession, user: User, channel: str = "whatsapp"
+) -> str:
+    """Envía el CÓDIGO de verificación de cuenta (6 dígitos).
+
+    Medio de entrega:
+    - WhatsApp: solo si el usuario lo eligió, hay teléfono válido y WhatsApp
+      Business puede entregar de verdad (can_deliver: credenciales Meta, sin dry-run).
+    - Correo: en cualquier otro caso (elección del usuario, WhatsApp no operativo
+      aún, o fallo del envío por WhatsApp). Mismo código, otro medio.
+
+    Retorna el medio efectivamente usado ("whatsapp" | "email"). Lanza si el
+    envío por correo (último recurso) falla.
+    """
+    want_whatsapp = (
+        channel == "whatsapp"
+        and whatsapp_service.can_deliver()
+        and user.phone
+        and is_valid_phone(user.phone)
+    )
+    if want_whatsapp:
+        try:
+            code = await otp_service.create_otp(
+                db=db, user=user, purpose=OtpPurpose.VERIFY_ACCOUNT, channel="whatsapp"
+            )
+            await whatsapp_service.send_otp(
+                to_phone=normalize_phone_e164(user.phone), code=code
+            )
+            return "whatsapp"
+        except Exception:
+            logger.warning(
+                "Fallo OTP por WhatsApp para %s, usando fallback email", user.id
+            )
+
+    code = await otp_service.create_otp(
+        db=db, user=user, purpose=OtpPurpose.VERIFY_ACCOUNT, channel="email"
+    )
+    await email_service.send_otp_email(
+        to_email=user.email,
+        full_name=user.full_name,
+        code=code,
+        purpose="verify",
+    )
+    return "email"
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     # Check email uniqueness
     result = await db.execute(select(User).where(User.email == body.email))
@@ -89,27 +144,26 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()
 
     try:
-        verification_token = create_email_verification_token(
-            {"sub": str(user.id), "email": user.email}
-        )
-        await email_service.send_verification_email(
-            to_email=user.email,
-            full_name=user.full_name,
-            token=verification_token,
+        channel = await _send_verification(
+            db=db, user=user, channel=body.verification_channel
         )
     except Exception:
+        # Solo si fallan ambos canales (WhatsApp ya cayó a email dentro del helper)
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
-                "detail": "No se pudo enviar el correo de verificación. Intenta de nuevo.",
-                "code": "EMAIL_DELIVERY_FAILED",
+                "detail": "No se pudo enviar la verificación. Intenta de nuevo.",
+                "code": "DELIVERY_FAILED",
             },
         )
 
     await db.commit()
     await db.refresh(user)
-    return user
+    return RegisterResponse(
+        **UserResponse.model_validate(user).model_dump(),
+        verification_channel=channel,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -275,7 +329,7 @@ async def verify_email(
     return EmailVerificationResult(verified=True)
 
 
-@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/resend-verification", response_model=ResendVerificationResult)
 async def resend_verification(
     body: EmailVerificationResendRequest,
     db: AsyncSession = Depends(get_db),
@@ -283,25 +337,62 @@ async def resend_verification(
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if not user or user.email_verified:
-        return
+        # Respuesta genérica anti-enumeración: no revelar si la cuenta existe
+        return ResendVerificationResult(channel=body.channel or "email")
+
+    await otp_service.check_rate_limit(db=db, user=user, purpose=OtpPurpose.VERIFY_ACCOUNT)
 
     try:
-        verification_token = create_email_verification_token(
-            {"sub": str(user.id), "email": user.email}
+        channel = await _send_verification(
+            db=db, user=user, channel=body.channel or "whatsapp"
         )
-        await email_service.send_verification_email(
-            to_email=user.email,
-            full_name=user.full_name,
-            token=verification_token,
-        )
+        await db.commit()
+    except HTTPException:
+        raise
     except Exception:
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
-                "detail": "No se pudo reenviar el correo de verificación. Intenta de nuevo.",
-                "code": "EMAIL_DELIVERY_FAILED",
+                "detail": "No se pudo reenviar la verificación. Intenta de nuevo.",
+                "code": "DELIVERY_FAILED",
             },
         )
+    return ResendVerificationResult(channel=channel)
+
+
+@router.post("/verify-code", response_model=EmailVerificationResult)
+async def verify_code(
+    body: VerifyCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Verifica la cuenta con el código OTP recibido por WhatsApp."""
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"detail": "Código inválido o expirado", "code": "INVALID_CODE"},
+    )
+
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+    if not user:
+        # Misma respuesta que un código incorrecto (anti-enumeración)
+        raise invalid
+
+    if user.email_verified:
+        return EmailVerificationResult(verified=True)
+
+    ok = await otp_service.verify_otp(
+        db=db, user=user, purpose=OtpPurpose.VERIFY_ACCOUNT, code=body.code
+    )
+    if not ok:
+        await db.commit()  # persistir el incremento de intentos
+        raise invalid
+
+    user.email_verified = True
+    # El código llegó al teléfono del usuario: el número queda verificado.
+    user.phone_verified = True
+    await db.commit()
+    return EmailVerificationResult(verified=True)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
@@ -315,38 +406,56 @@ async def forgot_password(
         if not user or not user.is_active:
             return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-        now = datetime.now(timezone.utc)
-        active_tokens_result = await db.execute(
-            select(PasswordResetToken).where(
-                PasswordResetToken.user_id == user.id,
-                PasswordResetToken.used_at == None,
-                PasswordResetToken.expires_at > now,
+        # Rate limit común: es el mismo tipo de código sin importar el medio
+        try:
+            await otp_service.check_rate_limit(
+                db=db, user=user, purpose=OtpPurpose.PASSWORD_RESET
             )
-        )
-        active_tokens = active_tokens_result.scalars().all()
-        for token in active_tokens:
-            token.used_at = now
+        except HTTPException:
+            # Respuesta genérica igualmente (anti-enumeración)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-        reset_token = create_password_reset_token({"sub": str(user.id), "email": user.email})
-        db.add(
-            PasswordResetToken(
-                user_id=user.id,
-                token_hash=_hash_token(reset_token),
-                expires_at=now + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES),
-            )
+        # Medio preferido: WhatsApp solo si el usuario no pidió correo, hay
+        # teléfono válido y WhatsApp Business puede ENTREGAR (can_deliver).
+        if (
+            body.channel != "email"
+            and whatsapp_service.can_deliver()
+            and user.phone
+            and is_valid_phone(user.phone)
+        ):
+            try:
+                code = await otp_service.create_otp(
+                    db=db, user=user, purpose=OtpPurpose.PASSWORD_RESET, channel="whatsapp"
+                )
+                await whatsapp_service.send_otp(
+                    to_phone=normalize_phone_e164(user.phone), code=code
+                )
+                await db.commit()
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
+            except Exception:
+                await db.rollback()
+                logger.warning(
+                    "Fallo OTP de reset por WhatsApp para %s, usando correo",
+                    user.id,
+                )
+
+        # Correo: mismo código de 6 dígitos, entregado por email. (El flujo
+        # legacy por enlace sigue vivo en /reset-password?token= para enlaces
+        # ya emitidos, pero los nuevos envíos son siempre códigos.)
+        code = await otp_service.create_otp(
+            db=db, user=user, purpose=OtpPurpose.PASSWORD_RESET, channel="email"
+        )
+        await email_service.send_otp_email(
+            to_email=user.email,
+            full_name=user.full_name,
+            code=code,
+            purpose="reset",
         )
         await db.commit()
-
-        try:
-            await email_service.send_password_reset_email(
-                to_email=user.email,
-                full_name=user.full_name,
-                token=reset_token,
-            )
-        except Exception:
-            # Keep generic response behavior to avoid account enumeration.
-            pass
     except Exception:
+        # La respuesta sigue siendo 204 (anti-enumeración), pero el error debe
+        # quedar visible para diagnóstico — antes se tragaba silenciosamente.
+        logger.exception("Error inesperado en forgot-password")
         await db.rollback()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -403,7 +512,18 @@ async def reset_password(
             detail={"detail": "Enlace inválido o expirado", "code": "INVALID_TOKEN"},
         )
 
-    if verify_password(body.new_password, user.password_hash):
+    await _apply_password_reset(db=db, user=user, new_password=body.new_password)
+
+    password_reset_token.used_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _apply_password_reset(db: AsyncSession, user: User, new_password: str) -> None:
+    """Lógica común de reset (por link o por código): rechaza reutilización,
+    revoca sesiones activas y aplica el nuevo hash. No hace commit."""
+    if verify_password(new_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
@@ -412,6 +532,7 @@ async def reset_password(
             },
         )
 
+    now = datetime.now(timezone.utc)
     refresh_tokens_result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.user_id == user.id,
@@ -419,13 +540,39 @@ async def reset_password(
             RefreshToken.expires_at > now,
         )
     )
-    refresh_tokens = refresh_tokens_result.scalars().all()
-    for token in refresh_tokens:
+    for token in refresh_tokens_result.scalars().all():
         token.revoked_at = now
 
-    password_reset_token.used_at = now
-    user.password_hash = hash_password(body.new_password)
+    user.password_hash = hash_password(new_password)
     user.must_change_password = False
+
+
+@router.post("/reset-password-with-code", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password_with_code(
+    body: ResetPasswordWithCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset de contraseña con el código OTP recibido por WhatsApp."""
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"detail": "Código inválido o expirado", "code": "INVALID_CODE"},
+    )
+
+    result = await db.execute(
+        select(User).where(User.email == body.email, User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise invalid
+
+    ok = await otp_service.verify_otp(
+        db=db, user=user, purpose=OtpPurpose.PASSWORD_RESET, code=body.code
+    )
+    if not ok:
+        await db.commit()  # persistir el incremento de intentos
+        raise invalid
+
+    await _apply_password_reset(db=db, user=user, new_password=body.new_password)
     await db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

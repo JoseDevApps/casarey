@@ -12,6 +12,8 @@ import { Logo } from '@/components/logo'
 
 const schema = z
   .object({
+    code: z.string().optional(),
+    email: z.string().optional(),
     new_password: z
       .string()
       .min(8, 'Mínimo 8 caracteres')
@@ -27,7 +29,11 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 export default function ResetPasswordPage() {
+  // Modo dual: con ?token= (enlace del correo) usa /reset-password;
+  // sin token pide el código de WhatsApp y usa /reset-password-with-code.
   const [token, setToken] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [channel, setChannel] = useState<string>('')
   const [hasCheckedToken, setHasCheckedToken] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [completed, setCompleted] = useState(false)
@@ -43,28 +49,54 @@ export default function ResetPasswordPage() {
   })
 
   useEffect(() => {
-    const parsedToken = new URLSearchParams(window.location.search).get('token')
-    setToken(parsedToken)
+    const params = new URLSearchParams(window.location.search)
+    setToken(params.get('token'))
+    setEmail(params.get('email') ?? '')
+    setChannel(params.get('channel') ?? '')
     setHasCheckedToken(true)
   }, [])
 
+  // Sin token = modo código: el usuario recibió un código de 6 dígitos
+  // (por WhatsApp o por correo, según el canal elegido / disponibilidad).
+  // Con ?token= es un enlace legacy del correo: flujo clásico.
+  const codeMode = !token
+
   async function onSubmit(values: FormValues) {
     setServerError(null)
-    if (!token) {
-      setServerError('El enlace de recuperación es inválido o está incompleto.')
-      return
-    }
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          token,
-          new_password: values.new_password,
-        }),
-      })
+      let res: Response
+      if (token) {
+        res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            token,
+            new_password: values.new_password,
+          }),
+        })
+      } else {
+        const code = (values.code ?? '').replace(/\D/g, '')
+        if (!email) {
+          setServerError('Falta el correo de la cuenta. Vuelve a solicitar el código.')
+          return
+        }
+        if (code.length !== 6) {
+          setServerError('Ingresa el código de 6 dígitos que te llegó por WhatsApp.')
+          return
+        }
+        res = await fetch('/api/auth/reset-password-with-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email,
+            code,
+            new_password: values.new_password,
+          }),
+        })
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({} as { detail?: string }))
@@ -101,7 +133,11 @@ export default function ResetPasswordPage() {
             Nueva contraseña
           </h1>
           <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-            Define una contraseña nueva para tu cuenta.
+            {codeMode
+              ? `Ingresa el código de 6 dígitos que te llegó por ${
+                  channel === 'email' ? 'correo (revisa spam)' : 'WhatsApp o correo'
+                } y define tu nueva contraseña.`
+              : 'Define una contraseña nueva para tu cuenta.'}
           </p>
 
           {!hasCheckedToken ? (
@@ -119,19 +155,50 @@ export default function ResetPasswordPage() {
             >
               Contraseña actualizada correctamente. Ya puedes iniciar sesión.
             </div>
-          ) : !token ? (
-            <div
-              className="rounded-lg px-4 py-3 text-sm"
-              style={{
-                background: 'rgba(186, 26, 26, 0.08)',
-                border: '1px solid rgba(186, 26, 26, 0.24)',
-                color: 'var(--color-error)',
-              }}
-            >
-              El enlace de recuperación es inválido o está incompleto.
-            </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              {codeMode && (
+                <>
+                  {!email && (
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="reset_email"
+                        className="text-sm font-medium"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        Correo de tu cuenta
+                      </label>
+                      <input
+                        id="reset_email"
+                        type="email"
+                        className="input-field"
+                        placeholder="tu@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor="code"
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Código de verificación
+                    </label>
+                    <input
+                      id="code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="••••••"
+                      className="input-field text-center text-xl tracking-[0.4em] font-mono"
+                      {...register('code')}
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="new_password" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Nueva contraseña

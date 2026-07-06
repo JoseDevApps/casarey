@@ -2,12 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { MessageCircle, Mail } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
+
+type Channel = 'whatsapp' | 'email'
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -16,7 +20,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function ForgotPasswordPage() {
-  const [submitted, setSubmitted] = useState(false)
+  const router = useRouter()
+  const [channel, setChannel] = useState<Channel>('whatsapp')
   const [networkError, setNetworkError] = useState<string | null>(null)
 
   const {
@@ -34,9 +39,13 @@ export default function ForgotPasswordPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: values.email }),
+        body: JSON.stringify({ email: values.email, channel }),
       })
-      setSubmitted(true)
+      // Modo código: la misma pantalla de reset acepta el código de WhatsApp
+      // o, si llegó un enlace al correo, ese enlace abre la misma página.
+      router.push(
+        `/reset-password?email=${encodeURIComponent(values.email)}&channel=${channel}`
+      )
     } catch {
       setNetworkError('Error de conexión. Intenta nuevamente.')
     }
@@ -65,21 +74,11 @@ export default function ForgotPasswordPage() {
             Recuperar contraseña
           </h1>
           <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-            Te enviaremos un enlace para restablecer tu contraseña.
+            Si tu cuenta existe, te enviaremos un código de 6 dígitos para
+            restablecer tu contraseña.
           </p>
 
-          {submitted ? (
-            <div
-              className="rounded-lg px-4 py-3 text-sm"
-              style={{
-                background: 'rgba(79, 97, 68, 0.10)',
-                border: '1px solid rgba(79, 97, 68, 0.24)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              Si el correo existe en nuestra plataforma, enviaremos un enlace de recuperación.
-            </div>
-          ) : (
+          {(
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <Input
                 id="email"
@@ -91,6 +90,47 @@ export default function ForgotPasswordPage() {
                 {...register('email')}
               />
 
+              {/* Selector de canal */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  ¿Dónde quieres recibirlo?
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, hint: 'Código de 6 dígitos' },
+                    { value: 'email', label: 'Correo', icon: Mail, hint: 'Código a tu correo' },
+                  ] as const).map((opt) => {
+                    const active = channel === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setChannel(opt.value)}
+                        aria-pressed={active}
+                        className="flex flex-col items-start gap-0.5 rounded-xl px-3.5 py-3 transition-all duration-150 text-left"
+                        style={{
+                          background: active ? 'rgba(79, 97, 68, 0.10)' : 'var(--surface-2)',
+                          border: active
+                            ? '1.5px solid var(--brand-primary)'
+                            : '1px solid var(--border-soft)',
+                        }}
+                      >
+                        <span
+                          className="flex items-center gap-1.5 text-sm font-semibold"
+                          style={{ color: active ? 'var(--brand-primary)' : 'var(--text-primary)' }}
+                        >
+                          <opt.icon size={15} />
+                          {opt.label}
+                        </span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {opt.hint}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               {networkError && (
                 <p className="text-xs" style={{ color: 'var(--color-error)' }}>
                   {networkError}
@@ -98,7 +138,7 @@ export default function ForgotPasswordPage() {
               )}
 
               <Button type="submit" variant="primary" size="lg" className="w-full mt-1" loading={isSubmitting}>
-                Enviar enlace
+                Enviar código
               </Button>
             </form>
           )}

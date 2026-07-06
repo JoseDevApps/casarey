@@ -172,6 +172,81 @@ async def send_password_reset_email(to_email: str, full_name: str, token: str) -
         raise
 
 
+async def send_otp_email(
+    to_email: str,
+    full_name: str,
+    code: str,
+    purpose: str = "verify",  # "verify" | "reset"
+) -> None:
+    """Envía el código OTP de 6 dígitos por correo.
+
+    Se usa mientras WhatsApp Business no esté operativo (o cuando el usuario
+    elige el canal correo): mismo flujo de código que WhatsApp, otro medio.
+    """
+    if not smtp_is_configured():
+        raise RuntimeError("SMTP no está configurado")
+
+    base = settings.FRONTEND_URL.rstrip("/")
+    email_q = quote(to_email, safe="")
+    if purpose == "reset":
+        subject = "Tu código para restablecer tu contraseña — Casas de Campo"
+        action = "restablecer tu contraseña"
+        entry_link = f"{base}/reset-password?email={email_q}&channel=email"
+        entry_label = "Restablecer mi contraseña"
+    else:
+        subject = "Tu código de verificación — Casas de Campo"
+        action = "verificar tu cuenta"
+        entry_link = f"{base}/verify-code?email={email_q}&channel=email"
+        entry_label = "Verificar mi cuenta"
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = _from_email()
+    message["To"] = to_email
+
+    plain_text = (
+        f"Hola {full_name},\n\n"
+        f"Tu código para {action} es:\n\n"
+        f"    {code}\n\n"
+        f"Ingrésalo en esta página:\n{entry_link}\n\n"
+        f"Expira en {settings.OTP_EXPIRE_MINUTES} minutos. "
+        "Por tu seguridad, no lo compartas con nadie.\n"
+        "Si no realizaste esta solicitud, ignora este mensaje."
+    )
+    message.set_content(plain_text)
+
+    html_text = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #1f2937;">
+        <p>Hola <strong>{full_name}</strong>,</p>
+        <p>Tu código para {action} es:</p>
+        <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px;
+                  font-family: monospace; color: #a73400;">{code}</p>
+        <p>
+          <a href="{entry_link}"
+             style="display: inline-block; background: #a73400; color: #ffffff;
+                    padding: 12px 24px; border-radius: 10px; text-decoration: none;
+                    font-weight: bold;">{entry_label}</a>
+        </p>
+        <p style="font-size: 13px; color: #6b7280;">
+          O copia el código e ingrésalo en: <a href="{entry_link}">{entry_link}</a>
+        </p>
+        <p>Expira en {settings.OTP_EXPIRE_MINUTES} minutos.
+           Por tu seguridad, no lo compartas con nadie.</p>
+        <p>Si no realizaste esta solicitud, ignora este mensaje.</p>
+      </body>
+    </html>
+    """
+    message.add_alternative(html_text, subtype="html")
+
+    try:
+        await asyncio.to_thread(_send_message_sync, message)
+        logger.info("Código OTP (%s) enviado por correo a %s", purpose, to_email)
+    except Exception:
+        logger.exception("Fallo al enviar código OTP por correo a %s", to_email)
+        raise
+
+
 async def send_custom_email(
     to_email: str,
     subject: str,

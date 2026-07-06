@@ -85,10 +85,9 @@ export default function LoginPage() {
         router.refresh()
         return
       }
-      if (user.role === 'SUPER_ADMIN') {
-        router.push('/dashboard/users')
-      } else if (user.role === 'ADMIN') {
-        router.push('/dashboard/properties')
+      if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+        // Vista inicial: disponibilidad de cabañas (hoy + calendario)
+        router.push('/dashboard/overview')
       } else {
         router.push('/dashboard/reservations')
       }
@@ -122,15 +121,19 @@ export default function LoginPage() {
         const err = await res.json().catch(() => ({} as { detail?: string }))
         setResendFeedback({
           type: 'error',
-          message: err.detail || 'No pudimos reenviar el correo de verificación.',
+          message: err.detail || 'No pudimos reenviar la verificación.',
         })
         return
       }
 
-      setResendFeedback({
-        type: 'success',
-        message: 'Te enviamos un nuevo correo de verificación. Revisa tu bandeja.',
-      })
+      // Ahora la verificación llega como CÓDIGO (WhatsApp o correo):
+      // llevar al usuario a la pantalla para ingresarlo.
+      const data = (await res.json().catch(() => ({}))) as { channel?: string }
+      const medium = data.channel === 'whatsapp' ? 'whatsapp' : 'email'
+      router.push(
+        `/verify-code?email=${encodeURIComponent(currentEmail)}&channel=${medium}`
+      )
+      return
     } catch {
       setResendFeedback({
         type: 'error',

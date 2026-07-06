@@ -21,6 +21,16 @@ from app.routers import (
 )
 from app.services import storage_service
 
+# Los loggers propios (app.*) deben propagar al stream de uvicorn a nivel INFO;
+# de lo contrario el DRY-RUN de WhatsApp y los avisos del dispatcher quedan ocultos.
+_app_logger = logging.getLogger("app")
+if not _app_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s [%(name)s] %(message)s"))
+    _app_logger.addHandler(_handler)
+_app_logger.setLevel(logging.DEBUG if settings.DEBUG else logging.INFO)
+_app_logger.propagate = False
+
 logger = logging.getLogger("app.errors")
 
 

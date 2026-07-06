@@ -22,6 +22,7 @@ export interface User {
   role: UserRole
   is_active: boolean
   email_verified: boolean
+  phone_verified?: boolean
   must_change_password: boolean
   created_at: string
 }
@@ -103,6 +104,9 @@ export interface AdminNotificationPreferences {
   id: string
   owner_id: string
   notification_email?: string | null
+  notification_phone?: string | null
+  whatsapp_enabled?: boolean
+  whatsapp_templates?: Record<string, string>
   client_approved_subject: string
   client_approved_body: string
   client_rejected_subject: string
