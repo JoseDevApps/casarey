@@ -19,7 +19,9 @@ export default async function ClientLayout({
   if (!user) redirect('/login')
   if (user.must_change_password) redirect('/change-password')
   if (user.role !== 'CLIENT') {
-    if (user.role === 'ADMIN') redirect('/dashboard/properties')
+    if (user.role === 'ADMIN' || user.role === 'TECH_ADMIN') {
+      redirect('/dashboard/overview')
+    }
     if (user.role === 'SUPER_ADMIN') redirect('/dashboard/users')
   }
 

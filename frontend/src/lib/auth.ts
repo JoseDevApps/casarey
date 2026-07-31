@@ -9,7 +9,7 @@ export interface MeResponse {
   email: string
   full_name: string
   phone?: string | null
-  role: 'CLIENT' | 'ADMIN' | 'SUPER_ADMIN'
+  role: 'CLIENT' | 'ADMIN' | 'SUPER_ADMIN' | 'TECH_ADMIN'
   is_active: boolean
   email_verified: boolean
   must_change_password: boolean
@@ -26,6 +26,8 @@ export function dashboardHomeForRole(role: UserRole): string {
       return '/dashboard/overview'
     case 'SUPER_ADMIN':
       return '/dashboard/overview'
+    case 'TECH_ADMIN':
+      return '/dashboard/overview'
   }
 }
 
@@ -33,6 +35,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   CLIENT: 'Cliente',
   ADMIN: 'Administrador',
   SUPER_ADMIN: 'Super Admin',
+  TECH_ADMIN: 'Admin Técnico',
 }
 
 export function roleLabel(role: UserRole): string {

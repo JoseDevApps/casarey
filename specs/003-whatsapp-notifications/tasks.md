@@ -2,7 +2,7 @@
 
 | # | Fase | Tarea | Estado |
 |---|---|---|---|
-| T00 | F0 | (Manual/usuario) WABA + token System User + 7 plantillas aprobadas en Meta | pending |
+| T00 | F0 | (Manual/usuario) WABA + token System User + 7 plantillas aprobadas en Meta | in_progress |
 | T01 | F1 | `backend/app/utils/phone.py` (normalize_phone_e164, is_valid_phone) | pending |
 | T02 | F1 | Settings `WHATSAPP_*` y `OTP_*` en config.py; docker-compose; .env.example | pending |
 | T03 | F1 | Modelo `OtpCode`; `notification_phone` en AdminNotificationPreference; `phone_verified` en User; registro en models/__init__ | pending |
@@ -96,6 +96,26 @@ Pedido del usuario: "mientras no tenga WhatsApp Business, envíalo por correo".
 - forgot-password → log `Código OTP (reset) enviado por correo`.
 - Códigos reales entregados al Gmail del usuario (cuenta de prueba jfibanezquiroz@gmail.com).
 - Frontend reconstruido: hints "Código a tu correo", pantalla verify-code con medio dinámico.
+
+## F0 — Estado de integración con Meta (2026-07-17)
+
+- Token permanente de System User **verificado** (scopes messaging+management, no caduca).
+  Cargado en `.env` local (gitignored). App: ClientesCabanas.
+- Phone ID `1206584079201016` = **número de PRUEBA de Meta** (+1 555-671-8857): solo envía
+  a la lista de destinatarios permitidos del panel (máx 5). Para producción: registrar
+  número real → nuevo PHONE_NUMBER_ID.
+- El system user no tenía la WABA asignada; se **autoasignó por API**
+  (`POST /{waba}/assigned_users?tasks=MANAGE,MANAGE_TEMPLATES` → success).
+- **6 plantillas UTILITY creadas por API** (reserva_aprobada, reserva_rechazada,
+  pago_recibido, pago_confirmado, admin_nueva_reserva, admin_comprobante_subido) → PENDING.
+- **AUTHENTICATION bloqueada** (error 2388185): requiere VERIFICACIÓN DEL NEGOCIO en Meta.
+  El intento de OTP como UTILITY (`codigo_acceso`) fue RECHAZADO al instante (política).
+  → Mientras tanto los OTP siguen saliendo por correo (fallback automático, sin cambios).
+- `WHATSAPP_DRY_RUN=false` activo; `can_deliver()=True` verificado en el backend.
+- Pendiente usuario: (1) aprobación de las 6 UTILITY, (2) agregar su número a la lista de
+  prueba del panel, (3) verificación del negocio (desbloquea plantilla AUTH para OTP),
+  (4) producción: número real. El `.env` del SERVIDOR debe recibir las mismas vars
+  WHATSAPP_* a mano (no viajan por git).
 
 ### Nota de entorno (importante para futuros rebuilds)
 El reloj de Docker Desktop tiene skew severo y BuildKit puede **no reemplazar la imagen ni

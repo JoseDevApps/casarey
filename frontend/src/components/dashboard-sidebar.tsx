@@ -27,11 +27,15 @@ interface NavItem {
   icon: React.ElementType
 }
 
-type Variant = 'client' | 'admin' | 'superadmin'
+type Variant = 'client' | 'admin' | 'superadmin' | 'techadmin'
 
 const NAV_BY_VARIANT: Record<Variant, NavItem[]> = {
   client: [
     { href: '/dashboard/reservations', label: 'Mis Reservas', icon: CalendarDays },
+  ],
+  // Admin técnico: supervisa disponibilidad y gestiona bloqueos desde el overview
+  techadmin: [
+    { href: '/dashboard/overview', label: 'Inicio', icon: LayoutDashboard },
   ],
   admin: [
     { href: '/dashboard/overview', label: 'Inicio', icon: LayoutDashboard },

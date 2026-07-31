@@ -23,7 +23,13 @@ export default async function AdminLayout({
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--surface-0)' }}>
       <DashboardSidebar
-        variant={user.role === 'SUPER_ADMIN' ? 'superadmin' : 'admin'}
+        variant={
+          user.role === 'SUPER_ADMIN'
+            ? 'superadmin'
+            : user.role === 'TECH_ADMIN'
+              ? 'techadmin'
+              : 'admin'
+        }
         userName={user.full_name}
         userEmail={user.email}
         userInitials={initialsOf(user.full_name)}

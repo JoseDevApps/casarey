@@ -5,7 +5,7 @@ export interface Paginated<T> {
   page_size: number
 }
 
-export type UserRole = 'CLIENT' | 'ADMIN' | 'SUPER_ADMIN'
+export type UserRole = 'CLIENT' | 'ADMIN' | 'SUPER_ADMIN' | 'TECH_ADMIN'
 export type ReservationStatus =
   | 'PENDING_APPROVAL'
   | 'APPROVED_WAITING_PAYMENT'

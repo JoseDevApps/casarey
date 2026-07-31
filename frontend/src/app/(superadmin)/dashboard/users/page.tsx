@@ -16,6 +16,7 @@ import {
   KeyRound,
   X,
   Users as UsersIcon,
+  Wrench,
 } from 'lucide-react'
 import type { User as UserType, UserRole } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
@@ -42,24 +43,28 @@ const ROLE_LABELS: Record<UserRole, string> = {
   CLIENT: 'Cliente',
   ADMIN: 'Administrador',
   SUPER_ADMIN: 'Super Admin',
+  TECH_ADMIN: 'Admin Técnico',
 }
 
 const ROLE_ICON: Record<UserRole, ElementType> = {
   CLIENT: UserIcon,
   ADMIN: ShieldCheck,
   SUPER_ADMIN: ShieldAlert,
+  TECH_ADMIN: Wrench,
 }
 
 const ROLE_COLOR: Record<UserRole, string> = {
   CLIENT: 'var(--text-secondary)',
   ADMIN: 'var(--brand-accent)',
   SUPER_ADMIN: 'var(--brand-warm)',
+  TECH_ADMIN: 'var(--brand-primary)',
 }
 
 const FILTERS: { value: UserRole | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Todos' },
   { value: 'CLIENT', label: 'Clientes' },
   { value: 'ADMIN', label: 'Administradores' },
+  { value: 'TECH_ADMIN', label: 'Admin Técnico' },
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
 ]
 
@@ -69,7 +74,7 @@ const STATUS_FILTERS: { value: 'ALL' | 'ACTIVE' | 'INACTIVE'; label: string }[] 
   { value: 'INACTIVE', label: 'Inactivas' },
 ]
 
-const PROMOTABLE_ROLES: UserRole[] = ['CLIENT', 'ADMIN']
+const PROMOTABLE_ROLES: UserRole[] = ['CLIENT', 'ADMIN', 'TECH_ADMIN']
 
 function validateTemporaryPassword(password: string): string | null {
   if (password.length < 8) return 'La contraseña temporal debe tener al menos 8 caracteres'
@@ -115,6 +120,7 @@ export default function UsersPage() {
       CLIENT: 0,
       ADMIN: 0,
       SUPER_ADMIN: 0,
+      TECH_ADMIN: 0,
     }
     for (const u of items) acc[u.role]++
     return acc

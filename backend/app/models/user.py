@@ -9,6 +9,9 @@ class UserRole(str, enum.Enum):
     CLIENT = "CLIENT"
     ADMIN = "ADMIN"
     SUPER_ADMIN = "SUPER_ADMIN"
+    # Operativo: ve disponibilidad de TODAS las cabañas y gestiona bloqueos
+    # de calendario; sin acceso a reservas, pagos, finanzas, usuarios ni CMS.
+    TECH_ADMIN = "TECH_ADMIN"
 
 
 class User(Base):

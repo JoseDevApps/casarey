@@ -80,7 +80,9 @@ async def block_dates(
     property_id: UUID,
     body: BlockDatesRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+    current_user: User = Depends(
+        require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TECH_ADMIN)
+    ),
 ):
     result = await db.execute(select(Property).where(Property.id == property_id))
     prop = result.scalar_one_or_none()
@@ -140,7 +142,9 @@ async def unblock_date(
     property_id: UUID,
     date_str: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)),
+    current_user: User = Depends(
+        require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TECH_ADMIN)
+    ),
 ):
     result = await db.execute(select(Property).where(Property.id == property_id))
     prop = result.scalar_one_or_none()

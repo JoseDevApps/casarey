@@ -85,7 +85,11 @@ export default function LoginPage() {
         router.refresh()
         return
       }
-      if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+      if (
+        user.role === 'SUPER_ADMIN' ||
+        user.role === 'ADMIN' ||
+        user.role === 'TECH_ADMIN'
+      ) {
         // Vista inicial: disponibilidad de cabañas (hoy + calendario)
         router.push('/dashboard/overview')
       } else {
