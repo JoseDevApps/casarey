@@ -119,6 +119,44 @@ Pedido del usuario: "mientras no tenga WhatsApp Business, envíalo por correo".
   (4) producción: número real. El `.env` del SERVIDOR debe recibir las mismas vars
   WHATSAPP_* a mano (no viajan por git).
 
+## Incremento — OTP por WhatsApp vía ventana de servicio (click-to-chat)
+
+Problema: la plantilla AUTHENTICATION (`codigo_verificacion`) no se puede crear hasta que
+Meta verifique el negocio (error 2388185); por eso el OTP caía siempre a correo
+(error de envío 132001 "Template name does not exist").
+
+Solución sin esperar la verificación: **ventana de servicio de 24 h**. El usuario abre
+WhatsApp desde la app (enlace `wa.me` prellenado) y envía un mensaje; eso abre la ventana,
+dentro de la cual Meta permite **texto libre sin plantilla**. El webhook responde con el
+código. Las conversaciones de servicio son **gratuitas**.
+
+| Componente | Archivo |
+|---|---|
+| Envío de texto libre | `whatsapp_service.send_text()` |
+| Webhook (handshake + mensajes entrantes) | `routers/whatsapp_webhook.py` → `/webhooks/whatsapp` |
+| Enlace click-to-chat | `GET /auth/whatsapp-optin` |
+| Botón en la pantalla del código | `(public)/verify-code/page.tsx` |
+| Aviso de desvío a correo | idem (`?fallback=1`) |
+
+Seguridad: valida `X-Hub-Signature-256` con `WHATSAPP_APP_SECRET` (si está configurado);
+`hub.verify_token` en el handshake; rate limit del OTP reutilizado.
+
+Nuevas env vars: `WHATSAPP_BUSINESS_NUMBER`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`.
+
+### QA (2026-08-02)
+- Handshake: token correcto → devuelve challenge 200; token incorrecto → 403.
+- `GET /auth/whatsapp-optin` → `{enabled:true, link:"https://wa.me/15556718857?text=..."}`.
+- Mensaje entrante simulado (payload real de Meta) → **código entregado por WhatsApp**
+  como texto libre (`WhatsApp enviado ... template=None`, log "Código de verificación
+  enviado por WhatsApp").
+- Casos cubiertos: sin cuenta → mensaje explicativo; ya verificada → aviso; rate limit → aviso.
+
+### PENDIENTE para que funcione con usuarios reales
+El webhook necesita **URL pública HTTPS**: configurar en Meta → App → WhatsApp →
+Configuración → Webhooks: `https://<dominio>/api/webhooks/whatsapp` (o el puerto del
+backend), con el mismo `WHATSAPP_VERIFY_TOKEN`, y suscribir el campo `messages`.
+En local no es alcanzable por Meta (probado con simulación del payload).
+
 ### Nota de entorno (importante para futuros rebuilds)
 El reloj de Docker Desktop tiene skew severo y BuildKit puede **no reemplazar la imagen ni
 recrear el contenedor** con `docker compose up -d --build`. Para cambios de backend/frontend

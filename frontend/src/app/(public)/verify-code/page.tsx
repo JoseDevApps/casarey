@@ -13,6 +13,8 @@ export default function VerifyCodePage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [medium, setMedium] = useState<'whatsapp' | 'email'>('email')
+  const [fellBack, setFellBack] = useState(false)
+  const [waLink, setWaLink] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -25,7 +27,17 @@ export default function VerifyCodePage() {
     const fromQuery = params.get('email')
     if (fromQuery) setEmail(fromQuery)
     if (params.get('channel') === 'whatsapp') setMedium('whatsapp')
+    if (params.get('fallback') === '1') setFellBack(true)
     inputRef.current?.focus()
+
+    // Click-to-chat: permite recibir el código por WhatsApp abriendo la
+    // ventana de servicio de 24 h (no requiere plantilla AUTHENTICATION).
+    fetch('/api/auth/whatsapp-optin', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { enabled?: boolean; link?: string } | null) => {
+        if (d?.enabled && d.link) setWaLink(d.link)
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -138,6 +150,49 @@ export default function VerifyCodePage() {
             . Expira en 10 minutos.
             {medium === 'email' ? ' Si no lo ves, revisa la carpeta de spam.' : ''}
           </p>
+
+          {fellBack && !waLink && (
+            <div
+              className="rounded-lg px-4 py-3 mb-5 text-sm"
+              style={{
+                background: 'rgba(240, 100, 47, 0.10)',
+                border: '1px solid rgba(240, 100, 47, 0.28)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Pediste el código por WhatsApp, pero aún no podemos entregarlo por
+              ese medio. Te lo enviamos a tu correo para que puedas continuar.
+            </div>
+          )}
+
+          {waLink && (
+            <div
+              className="rounded-xl p-4 mb-5"
+              style={{
+                background: 'rgba(79, 97, 68, 0.10)',
+                border: '1px solid rgba(79, 97, 68, 0.24)',
+              }}
+            >
+              <p className="text-sm mb-3" style={{ color: 'var(--text-primary)' }}>
+                <strong>¿Prefieres el código por WhatsApp?</strong> Toca el botón,
+                envía el mensaje que aparece y te respondemos al instante con tu
+                código.
+              </p>
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full text-base font-semibold px-6 py-3 rounded-xl transition-all duration-150"
+                style={{
+                  background: 'var(--brand-primary)',
+                  color: 'var(--color-bone, rgb(255,255,255))',
+                }}
+              >
+                <MessageCircle size={17} />
+                Recibir código por WhatsApp
+              </a>
+            </div>
+          )}
 
           {!email && (
             <div className="mb-4">

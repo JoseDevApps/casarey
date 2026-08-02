@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     WHATSAPP_TEMPLATE_RESERVATION_REJECTED: str = "reserva_rechazada"
     WHATSAPP_TEMPLATE_PAYMENT_RECEIVED: str = "pago_recibido"
     WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED: str = "pago_confirmado"
+    # Click-to-chat: número del negocio en E.164 sin '+' (para el enlace wa.me)
+    WHATSAPP_BUSINESS_NUMBER: str = ""
+    # Webhook de mensajes entrantes (abre la ventana de servicio de 24 h)
+    WHATSAPP_VERIFY_TOKEN: str = ""
+    WHATSAPP_APP_SECRET: str = ""
     # OTP (verificación de cuenta y reset por código)
     OTP_EXPIRE_MINUTES: int = 10
     OTP_MAX_ATTEMPTS: int = 5

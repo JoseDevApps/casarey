@@ -147,6 +147,14 @@ class ResendVerificationResult(BaseModel):
     channel: Literal["whatsapp", "email"]
 
 
+class WhatsAppOptinResponse(BaseModel):
+    """Enlace click-to-chat: al enviarlo se abre la ventana de servicio de 24 h
+    y el webhook responde con el código de verificación."""
+
+    enabled: bool
+    link: Optional[str] = None
+
+
 class ResetPasswordWithCodeRequest(BaseModel):
     email: EmailStr
     code: str

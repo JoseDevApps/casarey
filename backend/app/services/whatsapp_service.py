@@ -188,6 +188,26 @@ async def send_template(
     return await _post_payload(payload)
 
 
+async def send_text(to_phone: str, body: str) -> str:
+    """Envía un mensaje de TEXTO LIBRE (sin plantilla).
+
+    Meta solo lo permite dentro de la ventana de servicio de 24 h, es decir,
+    después de que el usuario haya escrito al negocio. Se usa para entregar el
+    código de verificación por WhatsApp sin depender de una plantilla
+    AUTHENTICATION (que exige verificación del negocio).
+    """
+    if not is_enabled() and not settings.WHATSAPP_DRY_RUN:
+        raise WhatsAppError("WhatsApp no está configurado")
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "text",
+        "text": {"preview_url": False, "body": body},
+    }
+    return await _post_payload(payload)
+
+
 async def send_otp(to_phone: str, code: str) -> str:
     """Envía el código OTP con la plantilla AUTHENTICATION.
 

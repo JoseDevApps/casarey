@@ -87,10 +87,12 @@ export default function RegisterPage() {
       const created = (await res.json().catch(() => ({}))) as {
         verification_channel?: string
       }
-      // Siempre llega un código de 6 dígitos; el medio varía (WhatsApp o correo)
+      // Siempre llega un código de 6 dígitos; el medio varía (WhatsApp o correo).
+      // Si el usuario pidió WhatsApp y salió por correo, avisamos del desvío.
       const medium = created.verification_channel === 'whatsapp' ? 'whatsapp' : 'email'
+      const fallback = channel === 'whatsapp' && medium === 'email' ? '&fallback=1' : ''
       router.push(
-        `/verify-code?email=${encodeURIComponent(payload.email)}&channel=${medium}`
+        `/verify-code?email=${encodeURIComponent(payload.email)}&channel=${medium}${fallback}`
       )
     } catch {
       setServerError('Error de conexión. Intenta de nuevo.')

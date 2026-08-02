@@ -18,6 +18,7 @@ from app.routers import (
     cms,
     uploads,
     notification_preferences,
+    whatsapp_webhook,
 )
 from app.services import storage_service
 
@@ -94,6 +95,11 @@ app.include_router(
     notification_preferences.router,
     prefix="/notification-preferences",
     tags=["notification-preferences"],
+)
+app.include_router(
+    whatsapp_webhook.router,
+    prefix="/webhooks/whatsapp",
+    tags=["whatsapp-webhook"],
 )
 
 

@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -39,6 +40,7 @@ from app.schemas.user import (
     ResetPasswordWithCodeRequest,
     ResendVerificationResult,
     VerifyCodeRequest,
+    WhatsAppOptinResponse,
 )
 from app.dependencies import get_current_user
 
@@ -359,6 +361,22 @@ async def resend_verification(
             },
         )
     return ResendVerificationResult(channel=channel)
+
+
+@router.get("/whatsapp-optin", response_model=WhatsAppOptinResponse)
+async def whatsapp_optin():
+    """Enlace para recibir el código por WhatsApp (click-to-chat).
+
+    El usuario envía el mensaje prellenado; eso abre la ventana de servicio de
+    24 h y el webhook le responde con el código. Permite entregar el OTP por
+    WhatsApp sin plantilla AUTHENTICATION.
+    """
+    number = settings.WHATSAPP_BUSINESS_NUMBER.strip()
+    if not (whatsapp_service.can_deliver() and number):
+        return WhatsAppOptinResponse(enabled=False)
+
+    text = quote("Hola, quiero recibir mi codigo de verificacion", safe="")
+    return WhatsAppOptinResponse(enabled=True, link=f"https://wa.me/{number}?text={text}")
 
 
 @router.post("/verify-code", response_model=EmailVerificationResult)
