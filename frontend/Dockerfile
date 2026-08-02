@@ -1,7 +1,9 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+# npm ci: instalacion reproducible desde el lockfile. Falla rapido y claro si
+# el lockfile no coincide, en vez de resolver versiones nuevas en cada build.
+RUN npm ci --no-audit --no-fund
 
 FROM node:22-alpine AS builder
 WORKDIR /app
