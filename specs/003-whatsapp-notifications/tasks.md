@@ -107,7 +107,9 @@ Pedido del usuario: "mientras no tenga WhatsApp Business, envíalo por correo".
 - El system user no tenía la WABA asignada; se **autoasignó por API**
   (`POST /{waba}/assigned_users?tasks=MANAGE,MANAGE_TEMPLATES` → success).
 - **6 plantillas UTILITY creadas por API** (reserva_aprobada, reserva_rechazada,
-  pago_recibido, pago_confirmado, admin_nueva_reserva, admin_comprobante_subido) → PENDING.
+  pago_recibido, pago_confirmado, admin_nueva_reserva, admin_comprobante_subido)
+  → **APPROVED** por Meta (verificado 2026-07-17, rejected_reason NONE). Envío real de
+  `reserva_aprobada` con sus 5 parámetros: `accepted` por la API.
 - **AUTHENTICATION bloqueada** (error 2388185): requiere VERIFICACIÓN DEL NEGOCIO en Meta.
   El intento de OTP como UTILITY (`codigo_acceso`) fue RECHAZADO al instante (política).
   → Mientras tanto los OTP siguen saliendo por correo (fallback automático, sin cambios).
