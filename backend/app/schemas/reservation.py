@@ -8,6 +8,9 @@ from app.models.reservation import ReservationStatus
 
 class ApproveRequest(BaseModel):
     discount_amount: Decimal = Decimal(0)
+    # Anticipo a cobrar. None = usar el % congelado de la reserva.
+    # 0 = eximir del anticipo (la reserva se confirma igual).
+    deposit_amount: Optional[Decimal] = None
 
 
 class ReservationCreate(BaseModel):
@@ -42,6 +45,8 @@ class ReservationResponse(BaseModel):
     snapshot_pricing_tier: int
     total_amount: Decimal
     discount_amount: Decimal = Decimal(0)
+    deposit_percentage: Decimal = Decimal(0)
+    deposit_amount: Optional[Decimal] = None
     status: ReservationStatus
     created_at: datetime
     updated_at: datetime
@@ -52,6 +57,15 @@ class ReservationResponse(BaseModel):
     @computed_field
     def final_amount(self) -> Decimal:
         return self.total_amount - self.discount_amount
+
+    @computed_field
+    def balance_due(self) -> Decimal:
+        """Saldo a pagar al llegar. Se deriva del anticipo (nunca se redondea
+        aparte) para que anticipo + saldo == final exactamente.
+        Si aún no hay anticipo fijado (reserva sin aprobar), el saldo es el total."""
+        if self.deposit_amount is None:
+            return self.total_amount - self.discount_amount
+        return self.total_amount - self.discount_amount - self.deposit_amount
 
 
 class ReservationListResponse(BaseModel):

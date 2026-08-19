@@ -11,12 +11,19 @@ interface MonthlyIncomeSummary {
   property_id: string
   property_name: string
   total_income: string
+  collected_income?: string
+  pending_income?: string
   confirmed_reservations: number
 }
 
 interface AdminFinanceSummaryResponse {
   items: MonthlyIncomeSummary[]
+  /** Facturado: monto final de las reservas confirmadas */
   total_income: string
+  /** Cobrado: anticipos ya confirmados */
+  collected_income?: string
+  /** Por cobrar: saldos que se pagan al llegar */
+  pending_income?: string
 }
 
 function fetcher(url: string) {
@@ -29,6 +36,8 @@ export default function AdminFinancesPage() {
   const { data, error, isLoading } = useSWR('/api/finances/summary', fetcher)
   const items = data?.items ?? []
   const grandTotal = data ? Number(data.total_income) : 0
+  const collected = data ? Number(data.collected_income ?? 0) : 0
+  const pending = data ? Number(data.pending_income ?? 0) : 0
   const totalReservations = items.reduce((sum, row) => sum + row.confirmed_reservations, 0)
 
   return (
@@ -41,7 +50,7 @@ export default function AdminFinancesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div
           className="rounded-2xl p-5 flex items-center gap-4"
           style={{ background: 'var(--surface-4)', border: '1px solid rgba(224,155,107,0.15)' }}
@@ -50,8 +59,32 @@ export default function AdminFinancesPage() {
             <TrendingUp size={18} style={{ color: 'var(--brand-accent)' }} />
           </div>
           <div>
-            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Total histórico confirmado</p>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Facturado</p>
             <p className="text-2xl font-bold" style={{ color: 'var(--brand-accent)' }}>{formatCurrency(grandTotal)}</p>
+          </div>
+        </div>
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{ background: 'rgba(79, 97, 68, 0.10)', border: '1px solid rgba(79, 97, 68, 0.24)' }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(79, 97, 68, 0.15)' }}>
+            <TrendingUp size={18} style={{ color: 'var(--brand-primary)' }} />
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Cobrado (anticipos)</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--brand-primary)' }}>{formatCurrency(collected)}</p>
+          </div>
+        </div>
+        <div
+          className="rounded-2xl p-5 flex items-center gap-4"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border-mid)' }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
+            <Receipt size={18} style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Por cobrar (al llegar)</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(pending)}</p>
           </div>
         </div>
         <div

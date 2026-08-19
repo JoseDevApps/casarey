@@ -19,7 +19,10 @@ Total reservado: Bs {{monto_total}}
 Descuento aplicado: Bs {{descuento}}
 Monto final: Bs {{monto_final}}
 
-Puedes cargar tu comprobante de pago en:
+Para asegurar tu reserva, paga el anticipo de Bs {{anticipo}}.
+Saldo a cancelar al llegar: Bs {{saldo}}
+
+Puedes cargar tu comprobante del anticipo en:
 {{url_panel_cliente}}
 
 Gracias por reservar con nosotros.
@@ -59,7 +62,8 @@ Tu pago ha sido confirmado y tu reserva ya esta activa.
 Propiedad: {{propiedad_nombre}}
 Entrada: {{fecha_entrada}}
 Salida: {{fecha_salida}}
-Monto final confirmado: Bs {{monto_final}}
+Anticipo confirmado: Bs {{anticipo}}
+Saldo a cancelar al llegar: Bs {{saldo}}
 
 Puedes revisar el detalle en:
 {{url_panel_cliente}}

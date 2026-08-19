@@ -43,6 +43,8 @@ export interface Property {
   rate_night_1: number
   rate_night_2: number
   rate_night_3: number
+  /** % de anticipo para asegurar la reserva (saldo se paga al llegar) */
+  deposit_percentage?: number
   is_active: boolean
   images: PropertyImage[]
   created_at: string
@@ -86,6 +88,12 @@ export interface Reservation {
   total_amount: number
   discount_amount: number
   final_amount: number
+  /** % de anticipo congelado al crear la reserva */
+  deposit_percentage?: number
+  /** Anticipo fijado al aprobar. null = trato legacy (se cobra el total) */
+  deposit_amount?: number | null
+  /** Saldo a pagar al llegar (final - anticipo) */
+  balance_due?: number
   status: ReservationStatus
   created_at: string
   updated_at?: string

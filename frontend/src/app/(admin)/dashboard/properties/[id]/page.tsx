@@ -30,6 +30,7 @@ const schema = z.object({
   rate_night_1: z.coerce.number().min(0),
   rate_night_2: z.coerce.number().min(0),
   rate_night_3: z.coerce.number().min(0),
+  deposit_percentage: z.coerce.number().min(0).max(100),
   is_active: z.boolean(),
 })
 
@@ -71,6 +72,7 @@ export default function AdminPropertyFormPage({ params }: Props) {
       rate_night_1: 0,
       rate_night_2: 0,
       rate_night_3: 0,
+      deposit_percentage: 40,
       is_active: true,
     },
   })
@@ -88,6 +90,7 @@ export default function AdminPropertyFormPage({ params }: Props) {
         rate_night_1: property.rate_night_1,
         rate_night_2: property.rate_night_2,
         rate_night_3: property.rate_night_3,
+        deposit_percentage: property.deposit_percentage ?? 40,
         is_active: property.is_active,
       })
     }
@@ -341,6 +344,23 @@ export default function AdminPropertyFormPage({ params }: Props) {
               error={errors.rate_night_3?.message}
               {...register('rate_night_3')}
             />
+          </div>
+
+          <div className="mt-4">
+            <Input
+              id="deposit_percentage"
+              label="Anticipo para reservar (%)"
+              type="number"
+              step="1"
+              min={0}
+              max={100}
+              error={errors.deposit_percentage?.message}
+              {...register('deposit_percentage')}
+            />
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              Porcentaje que el cliente paga por adelantado para asegurar la
+              cabaña. El saldo se cobra al llegar. 0 = sin anticipo.
+            </p>
           </div>
         </div>
 

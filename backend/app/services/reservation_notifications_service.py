@@ -72,6 +72,19 @@ def _final_amount(reservation: Reservation) -> Decimal:
     return total_amount - discount_amount
 
 
+def _deposit_amount(reservation: Reservation) -> Decimal:
+    """Anticipo fijado al aprobar. Si es NULL (reserva legacy o sin aprobar) se
+    considera el monto final completo, que es el comportamiento anterior."""
+    if reservation.deposit_amount is None:
+        return _final_amount(reservation)
+    return Decimal(str(reservation.deposit_amount))
+
+
+def _balance_due(reservation: Reservation) -> Decimal:
+    """Saldo a pagar al llegar. Derivado, nunca redondeado aparte."""
+    return _final_amount(reservation) - _deposit_amount(reservation)
+
+
 def _build_template_vars(reservation: Reservation, prop: Property, client: User) -> dict[str, object]:
     base_url = settings.FRONTEND_URL.rstrip("/")
     total_amount = Decimal(str(reservation.total_amount or 0))
@@ -89,6 +102,8 @@ def _build_template_vars(reservation: Reservation, prop: Property, client: User)
         "monto_total": _format_money(total_amount),
         "descuento": _format_money(discount_amount),
         "monto_final": _format_money(final_amount),
+        "anticipo": _format_money(_deposit_amount(reservation)),
+        "saldo": _format_money(_balance_due(reservation)),
         "estado_reserva": reservation.status.value,
         "url_panel_cliente": f"{base_url}/dashboard/reservations/{reservation.id}",
         "url_propiedad": f"{base_url}/properties/{reservation.property_id}",
@@ -110,6 +125,8 @@ def _build_wa_params(
     salida = _format_date(reservation.check_out_date)
     monto_total = _format_money(reservation.total_amount)
     monto_final = _format_money(_final_amount(reservation))
+    # Lo que el cliente debe pagar AHORA para asegurar la reserva
+    anticipo = _format_money(_deposit_amount(reservation))
 
     if kind == "admin_new_reservation":
         return [
@@ -125,13 +142,15 @@ def _build_wa_params(
     if kind == "admin_voucher_uploaded":
         return [client.full_name, prop.name, entrada, salida, monto_final]
     if kind == "reservation_approved":
-        return [client.full_name, prop.name, entrada, salida, monto_final]
+        # {{5}} = "Monto a pagar": es el ANTICIPO, no el total
+        return [client.full_name, prop.name, entrada, salida, anticipo]
     if kind == "reservation_rejected":
         return [client.full_name, prop.name, entrada, salida]
     if kind == "payment_received":
-        return [client.full_name, monto_final, prop.name]
+        # El comprobante recibido corresponde al anticipo
+        return [client.full_name, anticipo, prop.name]
     if kind == "payment_confirmed":
-        return [client.full_name, monto_final, prop.name, entrada, salida]
+        return [client.full_name, anticipo, prop.name, entrada, salida]
     raise ValueError(f"Tipo de notificacion desconocido: {kind}")
 
 

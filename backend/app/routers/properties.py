@@ -114,6 +114,7 @@ async def create_property(
         rate_night_1=body.rate_night_1,
         rate_night_2=body.rate_night_2,
         rate_night_3=body.rate_night_3,
+        deposit_percentage=body.deposit_percentage,
     )
     db.add(prop)
     await db.flush()

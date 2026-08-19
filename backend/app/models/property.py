@@ -34,6 +34,8 @@ class Property(Base):
     rate_night_1 = Column(Numeric(10, 2), nullable=False)
     rate_night_2 = Column(Numeric(10, 2), nullable=False)
     rate_night_3 = Column(Numeric(10, 2), nullable=False)
+    # % de anticipo exigido para asegurar la reserva (el saldo se cobra al llegar)
+    deposit_percentage = Column(Numeric(5, 2), nullable=False, server_default="40")
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

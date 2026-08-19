@@ -29,6 +29,10 @@ class Reservation(Base):
     snapshot_pricing_tier = Column(Integer, nullable=False)
     total_amount = Column(Numeric(10, 2), nullable=False)
     discount_amount = Column(Numeric(10, 2), default=0, nullable=False)
+    # Anticipo: el % se congela al crear (como las tarifas); el monto se fija al
+    # aprobar, cuando el descuento ya está aplicado. NULL = trato legacy (100%).
+    deposit_percentage = Column(Numeric(5, 2), nullable=False, server_default="40")
+    deposit_amount = Column(Numeric(10, 2), nullable=True)
     status = Column(Enum(ReservationStatus), nullable=False, default=ReservationStatus.PENDING_APPROVAL)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

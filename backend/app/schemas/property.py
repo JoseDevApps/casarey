@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime, time
 from decimal import Decimal
@@ -19,6 +19,8 @@ class PropertyCreate(BaseModel):
     rate_night_1: Decimal
     rate_night_2: Decimal
     rate_night_3: Decimal
+    # % de anticipo para asegurar la reserva (el saldo se cobra al llegar)
+    deposit_percentage: Decimal = Field(default=Decimal(40), ge=0, le=100)
     image_keys: List[str] = []
 
 
@@ -33,6 +35,7 @@ class PropertyUpdate(BaseModel):
     max_guests: Optional[int] = None
     rate_adult: Optional[Decimal] = None
     rate_child: Optional[Decimal] = None
+    deposit_percentage: Optional[Decimal] = Field(default=None, ge=0, le=100)
     rate_night_1: Optional[Decimal] = None
     rate_night_2: Optional[Decimal] = None
     rate_night_3: Optional[Decimal] = None
@@ -69,6 +72,7 @@ class PropertyResponse(BaseModel):
     rate_night_1: Decimal
     rate_night_2: Decimal
     rate_night_3: Decimal
+    deposit_percentage: Decimal = Decimal(40)
     is_active: bool
     created_at: datetime
     images: List[PropertyImageResponse] = []

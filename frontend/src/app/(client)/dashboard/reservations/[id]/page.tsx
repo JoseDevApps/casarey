@@ -325,11 +325,36 @@ export default function ClientReservationDetailPage({ params }: Props) {
                 className="flex justify-between font-bold pt-2 mt-1"
                 style={{ borderTop: '1px solid var(--border-soft)', color: 'var(--text-primary)' }}
               >
-                <span>{(reservation.discount_amount ?? 0) > 0 ? 'Total a pagar' : 'Total'}</span>
-                <span style={{ color: 'var(--brand-accent)' }}>
+                <span>Total</span>
+                <span style={{ color: 'var(--text-primary)' }}>
                   {formatCurrency(reservation.final_amount ?? reservation.total_amount)}
                 </span>
               </div>
+
+              {/* Anticipo y saldo: solo si el admin ya fijó el anticipo */}
+              {reservation.deposit_amount != null &&
+                (reservation.balance_due ?? 0) > 0 && (
+                  <>
+                    <div className="flex justify-between font-bold pt-2">
+                      <span style={{ color: 'var(--text-primary)' }}>
+                        {reservation.status === 'CONFIRMED'
+                          ? 'Anticipo pagado'
+                          : 'Anticipo a pagar ahora'}
+                      </span>
+                      <span style={{ color: 'var(--brand-accent)' }}>
+                        {formatCurrency(reservation.deposit_amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        Saldo al llegar
+                      </span>
+                      <span style={{ color: 'var(--text-primary)' }}>
+                        {formatCurrency(reservation.balance_due ?? 0)}
+                      </span>
+                    </div>
+                  </>
+                )}
             </div>
           </div>
 

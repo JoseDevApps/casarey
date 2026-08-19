@@ -88,6 +88,13 @@ export function BookingForm({
   const childrenSubtotal = nights > 0 ? nights * Number(numChildren || 0) * childRate : 0
   const total = adultsSubtotal + childrenSubtotal
 
+  // Anticipo para asegurar la reserva; el saldo se paga al llegar.
+  // Es una estimación: el monto firme se fija cuando el admin aprueba
+  // (puede aplicar descuento o ajustar el anticipo).
+  const depositPct = Number(property.deposit_percentage ?? 40)
+  const deposit = total > 0 ? Math.round(total * depositPct) / 100 : 0
+  const balance = total - deposit
+
   function handleDateRangeSelect(start: string, end: string | null) {
     setValue('check_in_date', start, { shouldValidate: true })
     setValue('check_out_date', end ?? '', { shouldValidate: end !== null })
@@ -305,10 +312,43 @@ export function BookingForm({
               }}
             >
               <span>Total estimado</span>
-              <span style={{ color: 'var(--brand-accent)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>
                 {formatCurrency(total)}
               </span>
             </div>
+
+            {/* Anticipo para asegurar la reserva */}
+            {depositPct > 0 && total > 0 && (
+              <div
+                className="rounded-xl p-3.5 mt-3"
+                style={{
+                  background: 'rgba(167, 52, 0, 0.08)',
+                  border: '1px solid rgba(167, 52, 0, 0.22)',
+                }}
+              >
+                <div className="flex justify-between font-bold text-base">
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Anticipo ({depositPct}%)
+                  </span>
+                  <span style={{ color: 'var(--brand-accent)' }}>
+                    {formatCurrency(deposit)}
+                  </span>
+                </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  Es lo que pagas ahora para asegurar la cabaña.
+                </p>
+                <div
+                  className="flex justify-between text-sm mt-2.5 pt-2.5"
+                  style={{ borderTop: '1px solid rgba(167, 52, 0, 0.18)' }}
+                >
+                  <span style={{ color: 'var(--text-secondary)' }}>Saldo al llegar</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    {formatCurrency(balance)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
               * Las tarifas se congelan al momento de la solicitud
             </p>

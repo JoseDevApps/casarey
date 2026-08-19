@@ -163,3 +163,19 @@ recrear el contenedor** con `docker compose up -d --build`. Para cambios de back
 usar: `docker compose build --no-cache <svc>` (vía PowerShell, no el Bash de la sesión que
 perdió coreutils) y luego `docker compose up -d --force-recreate --no-deps <svc>`; verificar
 con `docker images ... --format {{.CreatedSince}}` que la imagen sea reciente.
+
+## F0 COMPLETADO — OTP por WhatsApp operativo (2026-08-05)
+
+- `business_verification_status: verified` (el usuario completó la verificación en Meta).
+- Plantilla `codigo_verificacion` (AUTHENTICATION, es) creada por API → **APPROVED al
+  instante** (id 1295836305830127). Body con recomendación de seguridad, footer de
+  caducidad 10 min y botón COPY_CODE.
+- Envío real verificado y **registro end-to-end**: alta de usuario con
+  `verification_channel=whatsapp` → respuesta `whatsapp` → log
+  `WhatsApp enviado | template=codigo_verificacion`. Sin fallback a correo.
+- **Cero cambios de código**: `WHATSAPP_TEMPLATE_OTP` ya apuntaba a `codigo_verificacion`;
+  el dispatcher intentaba WhatsApp primero y solo caía a correo por el 132001.
+- El botón click-to-chat queda como respaldo (ya no es necesario).
+
+Pendiente para clientes reales: registrar el número de producción (el actual es el de
+prueba de Meta, limitado a 5 destinatarios autorizados).

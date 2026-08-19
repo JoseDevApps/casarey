@@ -124,6 +124,8 @@ export default function AdminRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'ALL'>('ALL')
   const [expandedGuests, setExpandedGuests] = useState<Set<string>>(new Set())
   const [discounts, setDiscounts] = useState<Record<string, string>>({})
+  // Anticipo a cobrar por reserva. Vacío = usar el % congelado de la reserva.
+  const [deposits, setDeposits] = useState<Record<string, string>>({})
   const [actionInFlight, setActionInFlight] = useState<{
     reservationId: string
     type: ReservationAction
@@ -145,10 +147,16 @@ export default function AdminRequestsPage() {
     try {
       const discountStr = discounts[id]?.trim() || '0'
       const discount_amount = Math.max(0, parseFloat(discountStr) || 0)
+      // Si el admin no escribe nada, el backend aplica el % congelado
+      const depositStr = deposits[id]?.trim()
+      const deposit_amount =
+        depositStr === undefined || depositStr === ''
+          ? null
+          : Math.max(0, parseFloat(depositStr) || 0)
       await apiFetch(`/api/reservations/${id}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discount_amount }),
+        body: JSON.stringify({ discount_amount, deposit_amount }),
       })
       toast('Reserva aprobada', 'success')
       await mutate()
@@ -312,6 +320,34 @@ export default function AdminRequestsPage() {
                           }
                           return null
                         })()}
+                      </div>
+                    </div>
+                    {/* Anticipo: precargado con el % de la reserva, editable (0 = eximir) */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                        Anticipo (Bs)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder={(() => {
+                            const d = parseFloat(discounts[res.id]) || 0
+                            const final = Math.max(0, Number(res.total_amount) - d)
+                            const pct = Number(res.deposit_percentage ?? 40)
+                            return (Math.round(final * pct) / 100).toFixed(2)
+                          })()}
+                          className="input-field w-24 text-sm"
+                          value={deposits[res.id] ?? ''}
+                          disabled={isActionLoading(res.id)}
+                          onChange={(e) =>
+                            setDeposits((prev) => ({ ...prev, [res.id]: e.target.value }))
+                          }
+                        />
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {res.deposit_percentage ?? 40}% sugerido
+                        </span>
                       </div>
                     </div>
                     <Button

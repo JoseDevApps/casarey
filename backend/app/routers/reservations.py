@@ -182,6 +182,7 @@ async def approve_reservation(
     await reservation_service.transition_reservation(
         db, reservation, ReservationStatus.APPROVED_WAITING_PAYMENT,
         discount_amount=body.discount_amount,
+        deposit_override=body.deposit_amount,
     )
     await db.commit()
     await db.refresh(reservation)

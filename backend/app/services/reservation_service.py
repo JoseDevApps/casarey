@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, select
@@ -20,6 +20,20 @@ VALID_TRANSITIONS: dict[ReservationStatus, list[ReservationStatus]] = {
     ReservationStatus.REJECTED: [],
     ReservationStatus.CANCELLED: [],
 }
+
+
+def compute_deposit(final_amount: Decimal, percentage: Decimal) -> Decimal:
+    """Anticipo a partir del monto final y el % congelado.
+
+    Única fuente de verdad del redondeo (HALF_UP, 2 decimales). El saldo SIEMPRE
+    se deriva como `final - deposit`, nunca se redondea aparte, para garantizar
+    que anticipo + saldo == final exactamente.
+    """
+    if final_amount <= 0 or percentage <= 0:
+        return Decimal("0.00")
+    raw = final_amount * percentage / Decimal(100)
+    deposit = raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return min(deposit, final_amount)
 
 
 def _resolve_pricing_tier(nights: int) -> int:
@@ -106,6 +120,9 @@ async def create_reservation(
         snapshot_nightly_rate=nightly_rate,
         snapshot_pricing_tier=pricing_tier,
         total_amount=total,
+        # Se congela el % vigente de la propiedad: cambiarlo después no afecta
+        # a esta reserva (misma garantía que las tarifas snapshot).
+        deposit_percentage=Decimal(str(prop.deposit_percentage or 0)),
     )
     db.add(reservation)
     await db.flush()
@@ -117,6 +134,7 @@ async def transition_reservation(
     reservation: Reservation,
     new_status: ReservationStatus,
     discount_amount: Decimal = Decimal(0),
+    deposit_override: Decimal | None = None,
 ) -> Reservation:
     """Validates and applies a state transition. Caller is responsible for committing."""
     allowed = VALID_TRANSITIONS.get(reservation.status, [])
@@ -148,6 +166,26 @@ async def transition_reservation(
                 },
             )
         reservation.discount_amount = discount_amount
+
+        # El anticipo se fija aquí, con el descuento ya aplicado. El admin puede
+        # sobrescribirlo (0 = eximir del anticipo).
+        final_amount = Decimal(str(reservation.total_amount)) - discount_amount
+        if deposit_override is not None:
+            if deposit_override < 0 or deposit_override > final_amount:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "detail": "El anticipo debe estar entre 0 y el monto final",
+                        "code": "INVALID_DEPOSIT",
+                    },
+                )
+            reservation.deposit_amount = deposit_override.quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+        else:
+            reservation.deposit_amount = compute_deposit(
+                final_amount, Decimal(str(reservation.deposit_percentage or 0))
+            )
 
     return reservation
 
