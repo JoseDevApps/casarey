@@ -71,6 +71,8 @@ class UserResponse(BaseModel):
     is_active: bool
     email_verified: bool
     phone_verified: bool
+    # Numero nuevo esperando confirmacion por codigo (None si no hay cambio en curso)
+    pending_phone: Optional[str] = None
     must_change_password: bool
     created_at: datetime
 
@@ -199,3 +201,53 @@ class UserListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Datos del perfil que el usuario puede editar por si mismo."""
+
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError("El nombre debe tener al menos 2 caracteres")
+        if len(value) > 100:
+            raise ValueError("El nombre es demasiado largo")
+        return value
+
+
+class PhoneChangeRequest(BaseModel):
+    """Solicitud de cambio de telefono.
+
+    Exige la contrasena actual porque el telefono recibe los codigos de
+    recuperacion: sin este control, una sesion robada bastaria para tomar
+    la cuenta.
+    """
+
+    new_phone: str
+    current_password: str
+
+    @field_validator("new_phone")
+    @classmethod
+    def validate_new_phone(cls, value: str) -> str:
+        return _validate_phone(value)
+
+
+class PhoneChangeResult(BaseModel):
+    pending_phone: str
+    channel: Literal["whatsapp", "email"]
+
+
+class VerifyPhoneRequest(BaseModel):
+    code: str
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, value: str) -> str:
+        value = value.strip()
+        if not (value.isdigit() and len(value) == 6):
+            raise ValueError("El codigo debe tener 6 digitos")
+        return value

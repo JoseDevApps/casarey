@@ -22,6 +22,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
+    # Numero nuevo a la espera de confirmacion por codigo. El telefono
+    # activo no cambia hasta que el usuario verifica el nuevo.
+    pending_phone = Column(String, nullable=True)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.CLIENT)
     is_active = Column(Boolean, default=True, nullable=False)
     email_verified = Column(Boolean, default=False, nullable=False)

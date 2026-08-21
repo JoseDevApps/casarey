@@ -8,6 +8,7 @@ from app.core.database import Base
 class OtpPurpose(str, enum.Enum):
     VERIFY_ACCOUNT = "VERIFY_ACCOUNT"
     PASSWORD_RESET = "PASSWORD_RESET"
+    VERIFY_PHONE = "VERIFY_PHONE"
 
 
 class OtpCode(Base):

@@ -3,7 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, LogOut, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, LogOut, ChevronDown, ChevronUp, ChevronRight, UserCog } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/components/ui/toast'
 
@@ -208,6 +208,18 @@ export function UserMenu({
             >
               <LayoutDashboard size={15} style={{ color: 'var(--brand-accent)' }} />
               <span className="flex-1">Mi panel</span>
+              <ChevronRight size={12} style={{ color: 'var(--text-muted)' }} aria-hidden />
+            </Link>
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/dashboard/perfil"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer outline-none transition-colors data-[highlighted]:bg-[var(--surface-2)]"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <UserCog size={15} style={{ color: 'var(--brand-accent)' }} />
+              <span className="flex-1">Mi perfil</span>
               <ChevronRight size={12} style={{ color: 'var(--text-muted)' }} aria-hidden />
             </Link>
           </DropdownMenu.Item>

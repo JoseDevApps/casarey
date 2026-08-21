@@ -41,6 +41,10 @@ from app.schemas.user import (
     ResendVerificationResult,
     VerifyCodeRequest,
     WhatsAppOptinResponse,
+    ProfileUpdateRequest,
+    PhoneChangeRequest,
+    PhoneChangeResult,
+    VerifyPhoneRequest,
 )
 from app.dependencies import get_current_user
 
@@ -656,4 +660,125 @@ async def change_password(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    body: ProfileUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Edita los datos no sensibles del perfil. El telefono se cambia por
+    /auth/change-phone porque requiere contrasena y verificacion."""
+    current_user.full_name = body.full_name
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+async def _send_phone_code(db: AsyncSession, user: User, to_phone: str) -> str:
+    """Envia el codigo al numero NUEVO. Si WhatsApp no puede entregar, usa correo
+    (asi el usuario no queda bloqueado, aunque el codigo viaje por otro medio)."""
+    code = await otp_service.create_otp(
+        db=db, user=user, purpose=OtpPurpose.VERIFY_PHONE, channel="whatsapp"
+    )
+    if whatsapp_service.can_deliver():
+        try:
+            await whatsapp_service.send_otp(to_phone=to_phone, code=code)
+            return "whatsapp"
+        except Exception:
+            logger.warning("Fallo el envio del codigo de cambio de telefono a %s", to_phone)
+
+    await email_service.send_otp_email(
+        to_email=user.email,
+        full_name=user.full_name,
+        code=code,
+        purpose="verify",
+    )
+    return "email"
+
+
+@router.post("/change-phone", response_model=PhoneChangeResult)
+async def change_phone(
+    body: PhoneChangeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Inicia el cambio de telefono.
+
+    El numero nuevo queda en `pending_phone` y NO reemplaza al actual hasta que
+    el usuario confirme el codigo. Asi, si se equivoca al escribirlo, sus
+    notificaciones siguen llegando al numero verificado y no a un desconocido.
+    """
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"detail": "La contraseña actual es incorrecta", "code": "INVALID_CURRENT_PASSWORD"},
+        )
+
+    if body.new_phone == current_user.phone:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"detail": "Ese ya es tu número actual", "code": "PHONE_UNCHANGED"},
+        )
+
+    await otp_service.check_rate_limit(
+        db=db, user=current_user, purpose=OtpPurpose.VERIFY_PHONE
+    )
+
+    current_user.pending_phone = body.new_phone
+    try:
+        channel = await _send_phone_code(db=db, user=current_user, to_phone=body.new_phone)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"detail": "No se pudo enviar el código. Intenta de nuevo.", "code": "DELIVERY_FAILED"},
+        )
+
+    await db.commit()
+    return PhoneChangeResult(pending_phone=body.new_phone, channel=channel)
+
+
+@router.post("/verify-phone", response_model=UserResponse)
+async def verify_phone(
+    body: VerifyPhoneRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Confirma el codigo y promueve el numero pendiente a numero activo."""
+    if not current_user.pending_phone:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"detail": "No hay un cambio de teléfono en curso", "code": "NO_PENDING_PHONE"},
+        )
+
+    ok = await otp_service.verify_otp(
+        db=db, user=current_user, purpose=OtpPurpose.VERIFY_PHONE, code=body.code
+    )
+    if not ok:
+        await db.commit()  # persistir el intento fallido
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"detail": "Código inválido o expirado", "code": "INVALID_CODE"},
+        )
+
+    current_user.phone = current_user.pending_phone
+    current_user.pending_phone = None
+    current_user.phone_verified = True
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/change-phone", response_model=UserResponse)
+async def cancel_phone_change(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cancela un cambio de telefono en curso."""
+    current_user.pending_phone = None
+    await db.commit()
+    await db.refresh(current_user)
     return current_user

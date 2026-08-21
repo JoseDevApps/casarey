@@ -23,6 +23,8 @@ export interface User {
   is_active: boolean
   email_verified: boolean
   phone_verified?: boolean
+  /** Numero nuevo esperando confirmacion por codigo */
+  pending_phone?: string | null
   must_change_password: boolean
   created_at: string
 }
