@@ -26,6 +26,14 @@ async function handler(
     Cookie: req.headers.get('cookie') || '',
   }
 
+  // Cabeceras que el backend necesita ver intactas. X-Hub-Signature-256 es la
+  // firma HMAC con que Meta firma los webhooks de WhatsApp: sin ella el backend
+  // rechaza la peticion cuando WHATSAPP_APP_SECRET esta configurado.
+  for (const name of ['x-hub-signature-256', 'x-hub-signature', 'user-agent']) {
+    const value = req.headers.get(name)
+    if (value) headers[name] = value
+  }
+
   // Forward original Content-Type (including multipart boundary) so backend can parse the body
   const ct = req.headers.get('content-type')
   if (ct) headers['Content-Type'] = ct
