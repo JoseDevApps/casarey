@@ -17,6 +17,7 @@ import {
   X,
   Users as UsersIcon,
   Wrench,
+  Phone,
 } from 'lucide-react'
 import type { User as UserType, UserRole } from '@/types/index'
 import { apiFetch } from '@/lib/api-client'
@@ -76,6 +77,13 @@ const STATUS_FILTERS: { value: 'ALL' | 'ACTIVE' | 'INACTIVE'; label: string }[] 
 
 const PROMOTABLE_ROLES: UserRole[] = ['CLIENT', 'ADMIN', 'TECH_ADMIN']
 
+/** 59171524843 -> +591 71524843 (E.164 guardado, legible en pantalla) */
+function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, '')
+  if (d.startsWith('591') && d.length === 11) return `+591 ${d.slice(3)}`
+  return `+${d}`
+}
+
 function validateTemporaryPassword(password: string): string | null {
   if (password.length < 8) return 'La contraseña temporal debe tener al menos 8 caracteres'
   if (!/[A-Z]/.test(password)) return 'La contraseña temporal debe incluir al menos una mayúscula'
@@ -109,7 +117,8 @@ export default function UsersPage() {
       if (!q) return true
       return (
         u.full_name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
+        u.email.toLowerCase().includes(q) ||
+        (u.phone ?? '').includes(q.replace(/\D/g, ''))
       )
     })
   }, [items, filter, statusFilter, query])
@@ -468,6 +477,31 @@ export default function UsersPage() {
                       style={{ color: 'var(--text-tertiary)' }}
                     >
                       {u.email}
+                    </p>
+                    <p
+                      className="text-xs truncate mt-0.5 flex items-center gap-1.5"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
+                      <Phone size={11} className="shrink-0" />
+                      {u.phone ? (
+                        <>
+                          <span className="font-mono">{formatPhone(u.phone)}</span>
+                          {u.phone_verified && (
+                            <span
+                              title="Telefono verificado"
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                              style={{
+                                background: 'rgba(79, 97, 68, 0.13)',
+                                color: 'var(--brand-primary)',
+                              }}
+                            >
+                              verificado
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>Sin telefono</span>
+                      )}
                     </p>
                     {!u.is_active && (
                       <p
